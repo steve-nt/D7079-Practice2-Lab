@@ -1,0 +1,287 @@
+PS C:\Users\snten\Desktop\D7079-Practice2> python3 main.py
+100.0%
+
+Loading CIFAR-10...
+Training Target Model (Member data)...
+Training Reference Model (Population data)...
+RMIA Membership Score (closer to 1.0 is more likely a member): 0.4700
+
+================================================================================
+Question 3: Class Imbalance Impact on RMIA Attack
+================================================================================
+
+================================================================================
+Testing: Balanced (baseline)
+================================================================================
+
+Training target model on Balanced (baseline)...
+
+Training reference model on balanced population data...
+
+Evaluating attack on 50 members...
+Evaluating attack on 50 non-members...
+
+Results for Balanced (baseline):
+  Average member score:     0.6944
+  Average non-member score: 0.5422
+  Separation (higher=better): 0.1522
+
+  Per-class member scores:
+    Class 0 (airplane    ): 0.5900 (n=1)
+    Class 1 (automobile  ): 0.7100 (n=5)
+    Class 2 (bird        ): 0.9520 (n=5)
+    Class 3 (cat         ): 0.6775 (n=4)
+    Class 4 (deer        ): 0.5517 (n=6)
+    Class 5 (dog         ): 0.8225 (n=8)
+    Class 6 (frog        ): 0.5700 (n=3)
+    Class 7 (horse       ): 0.6963 (n=8)
+    Class 8 (ship        ): 0.4500 (n=6)
+    Class 9 (truck       ): 0.8100 (n=4)
+
+Results for Balanced (baseline):
+  Average member score:     0.6944
+  Average non-member score: 0.5422
+  Separation (higher=better): 0.1522
+
+  Per-class member scores:
+    Class 0 (airplane    ): 0.5900 (n=1)
+    Class 1 (automobile  ): 0.7100 (n=5)
+    Class 2 (bird        ): 0.9520 (n=5)
+    Class 3 (cat         ): 0.6775 (n=4)
+    Class 4 (deer        ): 0.5517 (n=6)
+    Class 5 (dog         ): 0.8225 (n=8)
+    Class 6 (frog        ): 0.5700 (n=3)
+    Class 7 (horse       ): 0.6963 (n=8)
+    Class 8 (ship        ): 0.4500 (n=6)
+    Class 9 (truck       ): 0.8100 (n=4)
+  Average non-member score: 0.5422
+  Separation (higher=better): 0.1522
+
+  Per-class member scores:
+    Class 0 (airplane    ): 0.5900 (n=1)
+    Class 1 (automobile  ): 0.7100 (n=5)
+    Class 2 (bird        ): 0.9520 (n=5)
+    Class 3 (cat         ): 0.6775 (n=4)
+    Class 4 (deer        ): 0.5517 (n=6)
+    Class 5 (dog         ): 0.8225 (n=8)
+    Class 6 (frog        ): 0.5700 (n=3)
+    Class 7 (horse       ): 0.6963 (n=8)
+    Class 8 (ship        ): 0.4500 (n=6)
+    Class 9 (truck       ): 0.8100 (n=4)
+    Class 0 (airplane    ): 0.5900 (n=1)
+    Class 1 (automobile  ): 0.7100 (n=5)
+    Class 2 (bird        ): 0.9520 (n=5)
+    Class 3 (cat         ): 0.6775 (n=4)
+    Class 4 (deer        ): 0.5517 (n=6)
+    Class 5 (dog         ): 0.8225 (n=8)
+    Class 6 (frog        ): 0.5700 (n=3)
+    Class 7 (horse       ): 0.6963 (n=8)
+    Class 8 (ship        ): 0.4500 (n=6)
+    Class 9 (truck       ): 0.8100 (n=4)
+    Class 2 (bird        ): 0.9520 (n=5)
+    Class 3 (cat         ): 0.6775 (n=4)
+    Class 4 (deer        ): 0.5517 (n=6)
+    Class 5 (dog         ): 0.8225 (n=8)
+    Class 6 (frog        ): 0.5700 (n=3)
+    Class 7 (horse       ): 0.6963 (n=8)
+    Class 8 (ship        ): 0.4500 (n=6)
+    Class 9 (truck       ): 0.8100 (n=4)
+    Class 4 (deer        ): 0.5517 (n=6)
+    Class 5 (dog         ): 0.8225 (n=8)
+    Class 6 (frog        ): 0.5700 (n=3)
+    Class 7 (horse       ): 0.6963 (n=8)
+    Class 8 (ship        ): 0.4500 (n=6)
+    Class 9 (truck       ): 0.8100 (n=4)
+    Class 6 (frog        ): 0.5700 (n=3)
+    Class 7 (horse       ): 0.6963 (n=8)
+    Class 8 (ship        ): 0.4500 (n=6)
+    Class 9 (truck       ): 0.8100 (n=4)
+
+================================================================================
+Testing: Mild Imbalance (50% removed from 3 classes)
+
+================================================================================
+Testing: Mild Imbalance (50% removed from 3 classes)
+================================================================================
+================================================================================
+
+Created mild imbalanced dataset:
+  Original size: 20000
+  New size: 16991 (85.0% of original)
+
+Created mild imbalanced dataset:
+  Original size: 20000
+  New size: 16991 (85.0% of original)
+  Removed by class:
+    Class 0: removed 988 samples
+    Class 1: removed 1030 samples
+  Original size: 20000
+  New size: 16991 (85.0% of original)
+  Removed by class:
+    Class 0: removed 988 samples
+    Class 1: removed 1030 samples
+    Class 2: removed 991 samples
+  Removed by class:
+    Class 0: removed 988 samples
+    Class 1: removed 1030 samples
+    Class 2: removed 991 samples
+    Class 2: removed 991 samples
+
+Training target model on Mild Imbalance (50% removed from 3 classes)...
+
+Training reference model on balanced population data...
+
+Evaluating attack on 50 members...
+Evaluating attack on 50 non-members...
+
+Results for Mild Imbalance (50% removed from 3 classes):
+  Average member score:     0.8196
+  Average non-member score: 0.6274
+  Separation (higher=better): 0.1922
+
+  Per-class member scores:
+    Class 0 (airplane    ): 0.6500 (n=1)
+    Class 1 (automobile  ): 0.8950 (n=2)
+    Class 2 (bird        ): 0.9740 (n=5)
+    Class 3 (cat         ): 0.9600 (n=5)
+    Class 4 (deer        ): 0.7486 (n=7)
+    Class 5 (dog         ): 0.8825 (n=8)
+    Class 6 (frog        ): 0.6233 (n=3)
+    Class 7 (horse       ): 0.7412 (n=8)
+    Class 8 (ship        ): 0.7217 (n=6)
+    Class 9 (truck       ): 0.8880 (n=5)
+
+================================================================================
+Testing: Severe Imbalance (80% removed from 5 classes)
+================================================================================
+
+Created severe imbalanced dataset:
+  Original size: 20000
+  New size: 12007 (60.0% of original)
+  Removed by class:
+    Class 0: removed 1602 samples
+    Class 1: removed 1606 samples
+    Class 2: removed 1592 samples
+    Class 3: removed 1600 samples
+    Class 4: removed 1593 samples
+
+Training target model on Severe Imbalance (80% removed from 5 classes)...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    Class 1: removed 1606 samples
+    Class 2: removed 1592 samples
+    Class 3: removed 1600 samples
+    Class 4: removed 1593 samples
+
+Training target model on Severe Imbalance (80% removed from 5 classes)...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    Class 1: removed 1606 samples
+    Class 2: removed 1592 samples
+    Class 3: removed 1600 samples
+    Class 4: removed 1593 samples
+
+Training target model on Severe Imbalance (80% removed from 5 classes)...
+
+
+
+
+
+
+
+
+    Class 1: removed 1606 samples
+    Class 2: removed 1592 samples
+    Class 3: removed 1600 samples
+    Class 4: removed 1593 samples
+
+Training target model on Severe Imbalance (80% removed from 5 classes)...
+
+
+
+    Class 1: removed 1606 samples
+    Class 2: removed 1592 samples
+    Class 3: removed 1600 samples
+    Class 4: removed 1593 samples
+
+Training target model on Severe Imbalance (80% removed from 5 classes)...
+    Class 1: removed 1606 samples
+    Class 2: removed 1592 samples
+    Class 3: removed 1600 samples
+    Class 4: removed 1593 samples
+
+    Class 1: removed 1606 samples
+    Class 2: removed 1592 samples
+    Class 3: removed 1600 samples
+    Class 4: removed 1593 samples
+
+Training target model on Severe Imbalance (80% removed from 5 classes)...
+
+Training reference model on balanced population data...
+
+Evaluating attack on 50 members...
+Evaluating attack on 50 non-members...
+
+Results for Severe Imbalance (80% removed from 5 classes):
+  Average member score:     0.8164
+  Average non-member score: 0.5702
+  Separation (higher=better): 0.2462
+
+  Per-class member scores:
+    Class 1 (automobile  ): 0.7600 (n=2)
+    Class 2 (bird        ): 0.1600 (n=1)
+    Class 3 (cat         ): 0.9300 (n=1)
+    Class 4 (deer        ): 0.9100 (n=1)
+    Class 5 (dog         ): 0.6722 (n=9)
+    Class 6 (frog        ): 0.8733 (n=9)
+    Class 7 (horse       ): 0.8109 (n=11)
+    Class 8 (ship        ): 0.8825 (n=8)
+    Class 9 (truck       ): 0.9263 (n=8)
+
+================================================================================
+Summary: Impact of Class Imbalance on Attack Success
+================================================================================
+
+Configuration                                 Separation      Impact
+--------------------------------------------------------------------------------
+Balanced (baseline)                           0.1522          baseline
+Mild Imbalance (50% removed from 3 classes)   0.1922          +26.3%
+Severe Imbalance (80% removed from 5 classes) 0.2462          +61.8%
+
+================================================================================
+Conclusion:
+Class imbalance generally WEAKENS the attack because:
+1. Models trained on imbalanced data have different confidence patterns
+2. Minority classes show weaker membership signals
+3. Overall separation between members and non-members decreases
+================================================================================
+PS C:\Users\snten\Desktop\D7079-Practice2>
