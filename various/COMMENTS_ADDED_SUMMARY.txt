@@ -1,0 +1,323 @@
+======================================================================================
+COMPREHENSIVE CODE COMMENTS ADDED
+======================================================================================
+
+I have added detailed, educational comments to all three main implementation files
+to help you understand what each line of code is doing and why.
+
+======================================================================================
+FILES UPDATED WITH DETAILED COMMENTS:
+======================================================================================
+
+1. ✅ rmia_complete.py
+2. ✅ hrr_defense.py  
+3. ✅ evaluate_hrr_defense.py
+
+======================================================================================
+COMMENTING STYLE AND APPROACH:
+======================================================================================
+
+For each file, I added comments that explain:
+
+1. **What**: What each line/block of code does
+2. **Why**: Why it's necessary (mathematical/algorithmic reasoning)
+3. **How**: How it works (implementation details)
+
+Comment Types Added:
+-------------------
+
+A) FILE-LEVEL DOCUMENTATION
+   - Purpose of the script
+   - Papers it implements
+   - Overall approach and methodology
+   - Links to relevant concepts
+
+B) IMPORT COMMENTS
+   - What each library is used for
+   - Which specific features we need
+
+C) FUNCTION DOCUMENTATION
+   - Extended docstrings with:
+     * Clear explanation of purpose
+     * Mathematical formulas where relevant
+     * Step-by-step algorithm description
+     * Detailed parameter descriptions
+     * Return value explanations
+     * Example usage scenarios
+
+D) LINE-BY-LINE COMMENTS
+   - Explain each significant operation
+   - Mathematical reasoning (e.g., "convolution theorem")
+   - Why specific values are chosen (e.g., "epsilon to avoid division by zero")
+   - What PyTorch operations do (e.g., "unsqueeze adds batch dimension")
+
+E) ALGORITHMIC INSIGHTS
+   - RMIA: Likelihood ratio comparisons, pairwise domination
+   - HRR: Frequency domain operations, binding/unbinding
+   - Training: Forward/backward passes, gradient updates
+
+======================================================================================
+KEY SECTIONS COMMENTED IN DETAIL:
+======================================================================================
+
+rmia_complete.py
+----------------
+
+1. RMIA SCORE CALCULATION (get_rmia_score_multi):
+   ✓ Explains pairwise likelihood ratio concept
+   ✓ Offline scaling approximation (parameter 'a')
+   ✓ Population domination counting
+   ✓ Why reference models are needed
+   ✓ Mathematical formula: LR(x,z) = [Pr(x|θ) / Pr(x)] / [Pr(z|θ) / Pr(z)]
+
+2. MODEL TRAINING (train_model):
+   ✓ Each step of gradient descent
+   ✓ Forward pass, loss calculation, backward pass
+   ✓ Why zero gradients before each batch
+   ✓ Accuracy tracking and logging
+
+3. ATTACK EVALUATION (evaluate_attack):
+   ✓ ROC curve generation
+   ✓ AUC metric interpretation
+   ✓ TPR/FPR at different thresholds
+   ✓ What makes an attack successful
+
+4. VISUALIZATION (plot_roc_curves, plot_score_distribution):
+   ✓ What ROC curves show
+   ✓ How to interpret histograms
+   ✓ Why separation indicates good attack
+
+5. CLASS IMBALANCE (create_imbalanced_dataset):
+   ✓ Different imbalance types
+   ✓ Why this matters for MIA
+   ✓ Expected effects on attack
+
+hrr_defense.py
+--------------
+
+1. SECRET GENERATION (generate_secret):
+   ✓ Why unit magnitude projection
+   ✓ Frequency domain properties
+   ✓ Variance scaling for stable gradients
+   ✓ Complex number operations
+
+2. BINDING OPERATION (binding_2d):
+   ✓ Convolution theorem explanation
+   ✓ Why FFT makes it efficient (O(n log n))
+   ✓ Element-wise multiplication in frequency domain
+   ✓ Mathematical formula: x ⊛ s = F^(-1)[F(x) * F(s)]
+
+3. UNBINDING OPERATION (unbinding_2d):
+   ✓ Computing inverse in frequency domain
+   ✓ Complex conjugate / magnitude²
+   ✓ Why epsilon is needed
+   ✓ Why this only works with correct secret
+
+4. MODIFIED RESNET-18:
+   ✓ Why encoder-decoder structure
+   ✓ Upsampling to match input dimensions
+   ✓ Skip connections (if present)
+   ✓ Why output must match input shape
+
+5. GRADIENT REVERSAL (GradientReverseLayer):
+   ✓ Forward: identity function
+   ✓ Backward: negate gradients
+   ✓ Why this forces uninformative outputs
+   ✓ Adversarial training concept
+
+6. TRAINING LOOP (train_hrr_model):
+   ✓ Generate new secret per sample
+   ✓ Bind → Process → Unbind pipeline
+   ✓ Two loss components: prediction + adversarial
+   ✓ Why adversarial accuracy should be low
+
+evaluate_hrr_defense.py
+-----------------------
+
+1. MODEL LOADING (load_models):
+   ✓ Different loading for HRR vs baseline
+   ✓ Why HRR needs two networks
+   ✓ Evaluation mode vs training mode
+
+2. PROBABILITY EXTRACTION (get_probability_hrr, get_probability_baseline):
+   ✓ Full HRR pipeline for inference
+   ✓ Why secret is regenerated each time
+   ✓ Softmax for probability conversion
+   ✓ Class probability extraction
+
+3. RMIA ON HRR (get_rmia_score with HRR):
+   ✓ How RMIA is adapted for HRR models
+   ✓ Reference models still baseline (simplification)
+   ✓ Why defense reduces likelihood ratios
+
+4. COMPARISON VISUALIZATION (plot_comparison):
+   ✓ Side-by-side ROC curves
+   ✓ Score distributions for 4 groups
+   ✓ How to identify effective defense
+   ✓ AUC reduction percentage
+
+5. MAIN EVALUATION PIPELINE:
+   ✓ Training reference models
+   ✓ Running attacks on both models
+   ✓ Statistical comparison
+   ✓ Answering TASK 2.2 questions
+
+======================================================================================
+EXAMPLE COMMENT SNIPPETS:
+======================================================================================
+
+Example 1: RMIA Score Calculation
+----------------------------------
+Comment Added:
+    """
+    # Step 3: Offline scaling approximation (from RMIA paper Equation 5)
+    # Interpolates between OUT probability and uniform distribution
+    # a=0 gives uniform, a=1 gives pure OUT estimate
+    pr_x = 0.5 * ((1 + a) * prob_x_out + (1 - a))
+    # Add epsilon (1e-10) to avoid division by zero
+    ratio_x = prob_x_target / (pr_x + 1e-10)
+    """
+
+Example 2: HRR Binding
+----------------------
+Comment Added:
+    """
+    # Step 3: Element-wise multiplication in frequency domain
+    # This implements circular convolution (⊛) in spatial domain
+    # Multiplication in frequency domain = convolution in spatial domain (convolution theorem)
+    B = F_x * F_s
+    """
+
+Example 3: Gradient Reversal
+----------------------------
+Comment Added:
+    """
+    class GradientReverseLayer(torch.autograd.Function):
+        '''
+        Gradient Reversal Layer for adversarial training
+        Forward: identity function (pass data through unchanged)
+        Backward: negates gradients (encourages opposite behavior)
+        
+        This forces the main network to produce outputs that cannot
+        be classified without the secret, enhancing privacy.
+        '''
+    """
+
+======================================================================================
+MATHEMATICAL CONCEPTS EXPLAINED:
+======================================================================================
+
+1. RMIA - Pairwise Likelihood Ratios:
+   - What likelihood ratios measure
+   - Why pairwise comparison is robust
+   - Offline vs online attack modes
+   - Domination concept
+
+2. HRR - Circular Convolution:
+   - Convolution theorem (frequency domain multiplication)
+   - Why FFT makes it efficient
+   - Binding as obfuscation
+   - Unbinding as decryption
+
+3. Neural Network Training:
+   - Forward pass: input → output
+   - Loss calculation: error measurement
+   - Backward pass: compute gradients
+   - Optimizer step: update weights
+
+4. Evaluation Metrics:
+   - ROC curve: TPR vs FPR
+   - AUC: single number summary
+   - Confusion matrix concepts
+   - Statistical significance
+
+======================================================================================
+PYTORCH-SPECIFIC EXPLANATIONS:
+======================================================================================
+
+Comments added for PyTorch operations:
+
+1. torch.unsqueeze(0): "Adds batch dimension for model input"
+2. torch.no_grad(): "Disables gradient computation to save memory"
+3. model.eval(): "Sets model to evaluation mode (disables dropout)"
+4. optimizer.zero_grad(): "Clears old gradients (PyTorch accumulates by default)"
+5. loss.backward(): "Computes gradients via backpropagation"
+6. optimizer.step(): "Updates model parameters based on gradients"
+7. torch.fft.fft2(): "2D Fast Fourier Transform across height/width"
+8. .to(device): "Moves tensor to GPU/CPU for computation"
+
+======================================================================================
+LEARNING-FOCUSED COMMENTS:
+======================================================================================
+
+The comments are written to help you:
+
+✓ Understand the theory behind each operation
+✓ See how papers are translated to code
+✓ Learn PyTorch best practices
+✓ Grasp mathematical concepts visually
+✓ Debug issues more easily
+✓ Modify code confidently
+✓ Prepare for exams/presentations
+
+======================================================================================
+HOW TO USE THE COMMENTED CODE:
+======================================================================================
+
+1. **Learning Mode**:
+   - Read comments top-to-bottom
+   - Follow the "Why" → "What" → "How" structure
+   - Check mathematical formulas against papers
+   - Run code blocks individually to see effects
+
+2. **Debugging Mode**:
+   - Comments explain expected behavior
+   - Find where actual behavior diverges
+   - Understand variable purposes
+   - Trace data flow through pipeline
+
+3. **Modification Mode**:
+   - Comments explain constraints (e.g., "output must match input shape")
+   - Understand dependencies between components
+   - Know which parameters are safe to change
+   - See where to add new features
+
+4. **Presentation Mode**:
+   - Use comments as talking points
+   - Mathematical formulas for slides
+   - Step-by-step explanations
+   - Justify design decisions
+
+======================================================================================
+ADDITIONAL RESOURCES IN COMMENTS:
+======================================================================================
+
+Comments reference:
+- Paper equations (e.g., "Equation 5 from RMIA paper")
+- Section numbers from papers
+- Algorithmic concepts (convolution theorem, Bayes' rule)
+- PyTorch documentation implicitly
+- Common pitfalls (division by zero, gradient accumulation)
+
+======================================================================================
+SUMMARY:
+======================================================================================
+
+✅ All three main files have comprehensive line-by-line comments
+✅ Mathematical concepts are explained in plain English
+✅ PyTorch operations are demystified
+✅ Algorithm steps are clearly numbered
+✅ Design decisions are justified
+✅ Learning-focused approach throughout
+
+The code is now suitable for:
+- Educational purposes
+- Code review
+- Self-study
+- Exam preparation
+- Future modifications
+- Team collaboration
+
+You can now understand not just WHAT the code does, but WHY and HOW it works!
+
+======================================================================================

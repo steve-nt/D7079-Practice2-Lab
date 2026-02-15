@@ -1,0 +1,492 @@
+======================================================================================
+JUPYTER NOTEBOOKS CREATED - SUMMARY
+======================================================================================
+
+✅ THREE COMPREHENSIVE JUPYTER NOTEBOOKS HAVE BEEN CREATED
+
+All code from the Python scripts has been converted into interactive, educational
+Jupyter notebooks with extensive markdown explanations, mathematical formulas, and
+step-by-step guidance.
+
+======================================================================================
+NOTEBOOKS CREATED:
+======================================================================================
+
+1. ✅ Part1_RMIA_Complete.ipynb
+   - Complete RMIA (Membership Inference Attack) implementation
+   - ~34 KB, 33 code cells with markdown explanations
+   - Covers: Training, attack algorithm, evaluation, visualization
+
+2. ✅ Part2_HRR_Defense.ipynb
+   - Complete HRR defense mechanism implementation
+   - ~46 KB, 27 code cells with markdown explanations
+   - Covers: HRR operations, network architectures, CSPS training
+
+3. ✅ Part3_Complete_Evaluation.ipynb
+   - Complete evaluation comparing HRR defense vs RMIA attack
+   - ~41 KB, 25 code cells with markdown explanations
+   - Covers: Side-by-side comparison, TASK 2.2 answers, analysis
+
+======================================================================================
+NOTEBOOK STRUCTURE:
+======================================================================================
+
+Each notebook contains:
+
+📚 MARKDOWN CELLS:
+  • Introduction with paper references
+  • Mathematical formulas (LaTeX)
+  • Conceptual explanations
+  • Algorithm descriptions
+  • Visual diagrams (in text)
+  • Section headers and organization
+  • Expected results and interpretation
+  • Questions and answers
+  • Conclusions and next steps
+
+💻 CODE CELLS:
+  • Fully commented Python code
+  • Import statements with explanations
+  • Function definitions with docstrings
+  • Training loops with progress tracking
+  • Evaluation with metrics
+  • Visualization functions
+  • Results saving and loading
+  • Interactive execution
+
+======================================================================================
+PART 1: RMIA_COMPLETE.IPYNB
+======================================================================================
+
+Content Overview:
+-----------------
+1. Introduction to RMIA
+   - Paper reference (arXiv:2112.03570)
+   - Mathematical foundation
+   - Key concepts explained
+
+2. Setup and Imports
+   - Library explanations
+   - Device configuration
+
+3. Model Training Function
+   - ResNet-18 training
+   - Gradient descent explained
+   - Progress tracking
+
+4. RMIA Score Calculation
+   - Likelihood ratio computation
+   - Pairwise comparison
+   - Offline scaling
+   - Population domination
+
+5. Attack Evaluation
+   - ROC curve generation
+   - AUC calculation
+   - TPR/FPR metrics
+
+6. Visualization
+   - ROC curves
+   - Score distributions
+   - Interpretation guide
+
+7. Main Execution
+   - Dataset loading
+   - Training target model
+   - Training 1,2,4,8 reference models
+   - Comprehensive evaluation
+
+8. Analysis
+   - Comparison with paper
+   - Effect of reference models
+   - TASK 1.2 Question 1 & 2
+
+9. Conclusion
+   - Key findings
+   - Next steps
+
+Key Features:
+-------------
+• Mathematical formulas in LaTeX
+• Step-by-step algorithm breakdown
+• Inline code comments
+• Expected output descriptions
+• Comparison tables
+• Configuration options
+• Troubleshooting tips
+
+======================================================================================
+PART 2: HRR_DEFENSE.IPYNB
+======================================================================================
+
+Content Overview:
+-----------------
+1. Introduction to HRR
+   - Paper reference (arXiv:2206.05893)
+   - Binding/unbinding concept
+   - FFT efficiency explanation
+
+2. HRR Operations
+   - Secret generation with unit magnitude
+   - Binding operation (convolution theorem)
+   - Unbinding operation (inverse secret)
+   - Why FFT is used
+
+3. Network Architectures
+   - Modified ResNet-18 (encoder-decoder)
+   - Prediction Network (classifier)
+   - Gradient Reversal Layer (explained in detail)
+   - Adversarial Network (attacker simulation)
+
+4. Training Function - CSPS
+   - Three-network training
+   - Adversarial training concept
+   - Gradient reversal effect
+   - Loss calculation
+
+5. Testing Function
+   - HRR pipeline inference
+   - Secret generation per sample
+
+6. Main Execution
+   - Dataset loading
+   - HRR model training
+   - Baseline model training
+   - Comparison
+
+7. Analysis
+   - Accuracy trade-off
+   - Privacy-utility balance
+
+8. Conclusion
+   - TASK 2.2 questions preview
+   - Key insights
+
+Key Features:
+-------------
+• FFT mathematics explained
+• Convolution theorem visualization
+• Gradient reversal mechanics
+• Adversarial training concept
+• Architecture diagrams (text)
+• Training progress tracking
+• Comparison metrics
+
+======================================================================================
+PART 3: COMPLETE_EVALUATION.IPYNB
+======================================================================================
+
+Content Overview:
+-----------------
+1. Introduction
+   - Evaluation goals
+   - TASK 2.2 questions listed
+   - Metrics explained
+
+2. Model Loading
+   - HRR-protected model loading
+   - Baseline model loading
+
+3. Probability Extraction
+   - HRR inference pipeline
+   - Baseline inference
+   - Comparison
+
+4. RMIA Score Calculation
+   - Adapted for both model types
+   - Simplification notes
+
+5. Attack Evaluation
+   - Reference model training
+   - Baseline attack
+   - HRR attack
+
+6. Visualization
+   - Side-by-side ROC curves
+   - Score distributions (4 groups)
+   - AUC reduction calculation
+
+7. TASK 2.2 Question 1
+   - Effectiveness analysis
+   - Quantitative metrics
+   - Qualitative assessment
+
+8. TASK 2.2 Question 2
+   - Is HRR encryption?
+   - Comparison table
+   - When to use HRR
+
+9. TASK 2.2 Question 3
+   - Adaptive attacks analysis
+   - Paper results review
+   - Why attacks fail
+   - Future threats
+
+10. Final Summary
+    - Key findings
+    - Recommendations
+    - Complete lab overview
+
+Key Features:
+-------------
+• Comprehensive Q&A format
+• Comparison tables
+• Attack resistance analysis
+• Security property discussion
+• Practical recommendations
+• Complete lab summary
+
+======================================================================================
+HOW TO USE THE NOTEBOOKS:
+======================================================================================
+
+Option 1: Sequential Execution
+-------------------------------
+1. Open Part1_RMIA_Complete.ipynb
+2. Run all cells in order (Cell → Run All)
+3. Review outputs and visualizations
+4. Repeat for Part 2 and Part 3
+
+Option 2: Interactive Learning
+-------------------------------
+1. Open any notebook
+2. Read markdown cells for theory
+3. Run code cells one by one
+4. Experiment with parameters
+5. Observe output changes
+
+Option 3: Presentation Mode
+----------------------------
+1. Use Jupyter's slideshow mode
+2. Navigate through cells
+3. Execute live during presentation
+4. Discuss results interactively
+
+======================================================================================
+ADVANTAGES OF JUPYTER NOTEBOOKS:
+======================================================================================
+
+✅ Interactive Execution:
+   - Run code cell by cell
+   - See outputs immediately
+   - Debug easily
+
+✅ Educational Format:
+   - Mix code and explanation
+   - Mathematical formulas
+   - Visual results inline
+
+✅ Experimentation:
+   - Change parameters easily
+   - Re-run specific sections
+   - Compare results
+
+✅ Documentation:
+   - Self-documenting code
+   - Theory and practice together
+   - Easy to share and review
+
+✅ Visualization:
+   - Plots display inline
+   - Interactive exploration
+   - Clear presentation
+
+✅ Reproducibility:
+   - Clear execution order
+   - Environment documented
+   - Results saved with code
+
+======================================================================================
+KEY CONTENT IN EACH NOTEBOOK:
+======================================================================================
+
+Mathematical Formulas (LaTeX):
+-------------------------------
+• RMIA: LR_θ(x,z) = [Pr(x|θ)/Pr(x)] / [Pr(z|θ)/Pr(z)]
+• HRR Binding: x ⊛ s = F^(-1)[F(x) ⊙ F(s)]
+• Offline Scaling: Pr(x) = 0.5[(1+a)Pr(x)_OUT + (1-a)]
+• AUC calculation
+• ROC curve interpretation
+
+Algorithm Breakdowns:
+---------------------
+• RMIA step-by-step (5 steps)
+• HRR training pipeline (8 steps)
+• CSPS algorithm (detailed)
+• Gradient reversal mechanics
+
+Analysis Sections:
+------------------
+• Comparison with paper results
+• Effect of reference models
+• Class imbalance impact
+• HRR effectiveness
+• Encryption vs obfuscation
+• Attack resistance
+
+Tables and Comparisons:
+-----------------------
+• HRR vs Encryption comparison
+• Attack resistance summary
+• Privacy-utility trade-off
+• Results by configuration
+• Paper vs implementation
+
+======================================================================================
+RUNNING THE NOTEBOOKS:
+======================================================================================
+
+Requirements:
+-------------
+• Jupyter Notebook or JupyterLab
+• Python 3.7+
+• PyTorch
+• torchvision
+• NumPy
+• matplotlib
+• scikit-learn
+
+Installation:
+-------------
+```bash
+pip install jupyter torch torchvision numpy matplotlib scikit-learn
+```
+
+Launching:
+----------
+```bash
+# Navigate to folder
+cd C:\Users\snten\Desktop\d7079e_lab2
+
+# Start Jupyter
+jupyter notebook
+
+# Opens browser - select desired .ipynb file
+```
+
+Execution:
+----------
+1. Open notebook in browser
+2. Click "Cell" → "Run All" for full execution
+3. Or run cells individually with Shift+Enter
+
+======================================================================================
+ESTIMATED EXECUTION TIMES:
+======================================================================================
+
+Part 1 (RMIA):
+--------------
+• With GPU: 2-3 hours
+• With CPU: 6-10 hours
+• Depends on:
+  - Number of epochs (10-100)
+  - Number of reference models (1-8)
+  - Evaluation samples (200-1000)
+
+Part 2 (HRR):
+-------------
+• With GPU: 3-5 hours
+• With CPU: 10-15 hours
+• Depends on:
+  - Training epochs (30-100)
+  - Dataset size (subset vs full)
+  - Batch size (32)
+
+Part 3 (Evaluation):
+--------------------
+• With GPU: 1-2 hours
+• With CPU: 4-6 hours
+• Depends on:
+  - Reference model training
+  - Evaluation samples (200)
+  - HRR inference overhead
+
+Total: 6-12 hours (GPU) or 20-30 hours (CPU)
+
+======================================================================================
+TIPS FOR FASTER EXECUTION:
+======================================================================================
+
+1. Use GPU if available
+2. Reduce training epochs (10 instead of 100)
+3. Use smaller evaluation sets (200 instead of 1000)
+4. Train fewer reference models (2-4 instead of 8)
+5. Use dataset subsets during development
+6. Comment out visualization if not needed
+7. Run overnight for full results
+
+======================================================================================
+OUTPUT FILES GENERATED:
+======================================================================================
+
+From Part 1:
+------------
+• target_model.pth
+• ref_model_*_of_*.pth
+• results_*_refs.pkl
+• roc_comparison_all.png
+• score_dist_*.png
+
+From Part 2:
+------------
+• hrr_main_network.pth
+• hrr_pred_network.pth
+• hrr_adv_network.pth
+• baseline_model.pth
+
+From Part 3:
+------------
+• evaluation_results.pkl
+• hrr_vs_baseline.png
+
+======================================================================================
+EDUCATIONAL VALUE:
+======================================================================================
+
+The notebooks teach:
+-------------------
+✓ Membership inference attacks
+✓ Privacy-preserving ML
+✓ Adversarial training
+✓ Fourier Transform applications
+✓ Deep learning best practices
+✓ Evaluation methodology
+✓ Trade-off analysis
+✓ Security vs utility
+
+Skills developed:
+-----------------
+✓ PyTorch programming
+✓ Research implementation
+✓ Experimental design
+✓ Results visualization
+✓ Critical analysis
+✓ Scientific writing
+✓ Hyperparameter tuning
+✓ Model evaluation
+
+======================================================================================
+SUMMARY:
+======================================================================================
+
+✅ All three notebooks successfully created
+✅ Complete code from .py files included
+✅ Extensive markdown documentation added
+✅ Mathematical formulas in LaTeX format
+✅ Step-by-step explanations provided
+✅ TASK 2.2 questions fully answered
+✅ Visualizations and analysis included
+✅ Ready for interactive execution
+
+Total Content:
+--------------
+• ~120 KB of notebook content
+• 85+ code and markdown cells
+• Complete implementation of Lab 2
+• All questions answered
+• Comprehensive analysis provided
+
+The notebooks provide an interactive, educational experience that combines
+theory, implementation, and analysis in a single executable document!
+
+======================================================================================

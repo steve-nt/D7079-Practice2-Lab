@@ -1,0 +1,511 @@
+================================================================================
+RMIA (Relative Membership Inference Attack) Implementation
+================================================================================
+
+This file contains the complete code from part1.ipynb with detailed line-by-line
+comments explaining what each operation does.
+
+Based on the paper: "Low-Cost High-Power Membership Inference Attacks"
+
+================================================================================
+SECTION 1: IMPORT LIBRARIES
+================================================================================
+
+# Import numpy for numerical operations and averaging
+import numpy as np
+
+# Import PyTorch - the main deep learning framework
+import torch
+
+# Import neural network module for building layers
+import torch.nn as nn
+
+# Import optimization algorithms (we'll use Adam)
+import torch.optim as optim
+
+# Import torchvision for computer vision utilities
+import torchvision
+
+# Import image transformation functions
+import torchvision.transforms as transforms
+
+# Import the pre-trained ResNet-18 architecture
+from torchvision.models import resnet18
+
+# Import data loading utilities
+from torch.utils.data import DataLoader, Subset
+
+# Import sklearn metrics for ROC curve and AUC calculation
+from sklearn.metrics import roc_curve, auc
+
+# Import matplotlib for creating plots and visualizations
+import matplotlib.pyplot as plt
+
+================================================================================
+SECTION 2: MODEL TRAINING FUNCTION
+================================================================================
+
+"""
+This function trains a ResNet-18 model on the provided dataloader.
+We use 5 epochs (vs. 100 in the paper) for faster training.
+"""
+
+def train_model(dataloader, epochs=5):
+    # Initialize a ResNet-18 model with 10 output classes (for CIFAR-10)
+    model = resnet18(num_classes=10)
+    
+    # Define the loss function: Cross-Entropy is standard for classification
+    # It measures how far the predictions are from the true labels
+    criterion = nn.CrossEntropyLoss()
+    
+    # Initialize Adam optimizer with learning rate 0.001
+    # Adam adapts the learning rate for each parameter automatically
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    
+    # Set model to training mode
+    # This enables dropout and batch normalization training behavior
+    model.train()
+    
+    # Loop through each epoch (one complete pass through the dataset)
+    for epoch in range(epochs):
+        # Loop through each batch of data
+        for inputs, labels in dataloader:
+            # Clear the gradients from the previous iteration
+            # PyTorch accumulates gradients, so we must zero them each time
+            optimizer.zero_grad()
+            
+            # Forward pass: compute model predictions
+            # inputs are passed through the network to get outputs
+            outputs = model(inputs)
+            
+            # Calculate the loss between predictions and true labels
+            loss = criterion(outputs, labels)
+            
+            # Backward pass: compute gradients of loss w.r.t. parameters
+            # This calculates how much each parameter contributed to the loss
+            loss.backward()
+            
+            # Update model parameters using the computed gradients
+            # The optimizer adjusts weights to minimize the loss
+            optimizer.step()
+    
+    # Return the trained model
+    return model
+
+================================================================================
+SECTION 3: RMIA SCORE CALCULATION (CORE ATTACK FUNCTION)
+================================================================================
+
+"""
+This is the main RMIA attack function using multiple reference models.
+
+Parameters:
+- tar_model: The target (victim) model we're attacking
+- ref_models: List of reference models trained on different data
+- known_img: The test sample image we want to check membership for
+- known_label: The true label of the test sample
+- population_subset: Population samples used as baseline for comparison
+- gamma: Threshold parameter (default: 1.0) - controls ratio comparison
+- a: Offline approximation parameter (default: 0.3) - adjusts probability estimate
+
+Returns:
+- RMIA score between 0 and 1 (higher = more likely to be a member)
+"""
+
+def get_rmia_score_multi(tar_model, ref_models, known_img, known_label, population_subset, gamma=1.0, a=0.3):
+    # Set target model to evaluation mode
+    # This disables dropout and uses running statistics for batch normalization
+    tar_model.eval()
+    
+    # Set all reference models to evaluation mode
+    for rm in ref_models:
+        rm.eval()
+    
+    # Disable gradient computation for efficiency during inference
+    # We don't need gradients when just making predictions
+    with torch.no_grad():
+        # STEP 1: Get target model's probability for the test sample x
+        # unsqueeze(0) adds a batch dimension (models expect batches)
+        # softmax converts raw logits to probabilities
+        # [0, known_label] extracts the probability for the true class
+        # .item() converts the tensor to a Python number
+        prob_x_target = torch.softmax(tar_model(known_img.unsqueeze(0)), dim=1)[0, known_label].item()
+        
+        # STEP 2: Get probabilities from all reference models for sample x
+        # We collect predictions from each reference model
+        all_ref_probs_x = [torch.softmax(rm(known_img.unsqueeze(0)), dim=1)[0, known_label].item() for rm in ref_models]
+        
+        # Average the reference model probabilities to get Pr(x)_OUT
+        # Averaging multiple models reduces variance and gives more stable estimates
+        prob_x_out = np.mean(all_ref_probs_x)
+        
+        # STEP 3: Apply offline scaling approximation
+        # This formula estimates what Pr(x) would be if we had both IN and OUT models
+        # The paper's formula: Pr(x) ≈ 0.5 * ((1+a)*Pr(x)_OUT + (1-a))
+        # Parameter 'a' controls how much we trust the OUT models
+        pr_x = 0.5 * ((1 + a) * prob_x_out + (1 - a))
+        
+        # STEP 4: Calculate likelihood ratio for test sample x
+        # Ratio = P(x|target) / P(x|reference)
+        # Add 1e-10 (tiny number) to avoid division by zero
+        ratio_x = prob_x_target / (pr_x + 1e-10)
+        
+        # STEP 5: Compare x's ratio against population samples
+        # Count how many population samples (z) have lower ratios than x
+        count_dominated = 0
+        
+        # Loop through each population sample z
+        for z_img, z_label in population_subset:
+            # Get target model's probability for population sample z
+            prob_z_target = torch.softmax(tar_model(z_img.unsqueeze(0)), dim=1)[0, z_label].item()
+            
+            # Get reference model probabilities for sample z
+            all_ref_probs_z = [torch.softmax(rm(z_img.unsqueeze(0)), dim=1)[0, z_label].item() for rm in ref_models]
+            
+            # Average reference probabilities for z
+            prob_z_out = np.mean(all_ref_probs_z)
+            
+            # Calculate likelihood ratio for population sample z
+            # For z, we use a simpler ratio without offline approximation
+            ratio_z = prob_z_target / (prob_z_out + 1e-10)
+            
+            # Check if x's ratio is significantly higher than z's ratio
+            # gamma is a threshold parameter (usually 1.0)
+            # If x dominates z (higher ratio), increment counter
+            if (ratio_x / (ratio_z + 1e-10)) > gamma:
+                count_dominated += 1
+        
+        # STEP 6: Return normalized score
+        # Score = (number of population samples dominated) / (total population samples)
+        # This gives a value between 0 and 1
+        # Higher score = x's ratio is higher than most population samples = likely a member
+        return count_dominated / len(population_subset)
+
+================================================================================
+SECTION 4: DATA PREPARATION
+================================================================================
+
+"""
+Load CIFAR-10 dataset and split it into three parts:
+1. Target training set (members) - 20,000 samples
+2. Test set (non-members) - 20,000 samples  
+3. Population set (for RMIA baseline) - 10,000 samples
+"""
+
+# Define image preprocessing pipeline
+transform = transforms.Compose([
+    # Convert PIL Image to PyTorch tensor (changes HxWxC to CxHxW format)
+    transforms.ToTensor(),
+    
+    # Normalize pixel values to range [-1, 1]
+    # Formula: (pixel - mean) / std
+    # We use mean=0.5 and std=0.5 for each RGB channel
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+])
+
+# Download and load CIFAR-10 training dataset
+# root='./data': where to save/load the dataset
+# train=True: use training split (50,000 images)
+# download=True: download if not already present
+# transform=transform: apply our preprocessing pipeline
+full_trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+
+# Split the 50,000 CIFAR-10 images into three subsets
+# [20000, 20000, 10000, 0] specifies the size of each split
+# The last 0 ensures we use all 50,000 images
+target_train, target_test, population_data, _ = torch.utils.data.random_split(
+    full_trainset, [20000, 20000, 10000, 0]
+)
+
+# Print status message
+print("\nLoading CIFAR-10...")
+
+# Create DataLoader for target training set
+# batch_size=64: process 64 images at a time
+# shuffle=True: randomly shuffle data each epoch (helps training)
+train_loader = DataLoader(target_train, batch_size=64, shuffle=True)
+
+================================================================================
+SECTION 5: TRAIN TARGET MODEL
+================================================================================
+
+"""
+Train the target (victim) model on the member data.
+This is the model we'll attack to determine membership.
+"""
+
+# Print status message
+print("Training Target Model (Member data)...")
+
+# Train the model using the train_model function we defined earlier
+# This trains for 5 epochs on the 20,000 member samples
+target_model = train_model(train_loader)
+
+================================================================================
+SECTION 6: TRAIN MULTIPLE REFERENCE MODELS
+================================================================================
+
+"""
+Train multiple reference models on different subsets of population data.
+Multiple models reduce variance in probability estimates through averaging.
+The paper uses 1-127 models; we use 8 for a balance of accuracy and speed.
+"""
+
+# Define how many reference models to train
+num_ref_models = 8
+
+# Initialize empty list to store reference models
+ref_models = []
+
+# Create array of indices for the population data
+# This allows us to shuffle and sample different subsets
+pop_indices = np.arange(len(population_data))
+
+# Train each reference model
+for i in range(num_ref_models):
+    # Print progress message
+    print(f"Training Reference Model {i+1}/{num_ref_models}...")
+    
+    # Randomly shuffle the population indices
+    # This ensures each reference model sees different data
+    np.random.shuffle(pop_indices)
+    
+    # Select first half of shuffled indices
+    # Using 50% of population data per model for diversity
+    subset_indices = pop_indices[:len(pop_indices) // 2]
+    
+    # Create a Subset object with selected indices
+    # This creates a view into the population data
+    ref_subset = Subset(population_data, subset_indices)
+    
+    # Create DataLoader for this reference model's training data
+    ref_loader = DataLoader(ref_subset, batch_size=64, shuffle=True)
+    
+    # Train the reference model and add it to our list
+    ref_models.append(train_model(ref_loader))
+
+================================================================================
+SECTION 7: SINGLE SAMPLE TEST (DEMONSTRATION)
+================================================================================
+
+"""
+Test the RMIA attack on a single member sample using different numbers
+of reference models to demonstrate the effect of averaging.
+"""
+
+# Extract the first training sample (we know it's a member)
+# img is the image tensor, lbl is the label (0-9 for CIFAR-10)
+img, lbl = target_train[0]
+
+# Select 100 random population samples as baseline (z-samples)
+# These are used for likelihood ratio comparisons
+z_samples = [population_data[i] for i in range(100)]
+
+# Calculate RMIA scores using different numbers of reference models
+# This shows how more models improve score stability
+
+# Using only 1 reference model
+score1ref = get_rmia_score_multi(target_model, ref_models[:1], img, lbl, z_samples)
+
+# Using 2 reference models
+score2ref = get_rmia_score_multi(target_model, ref_models[:2], img, lbl, z_samples)
+
+# Using 4 reference models
+score4ref = get_rmia_score_multi(target_model, ref_models[:4], img, lbl, z_samples)
+
+# Using all 8 reference models
+score8ref = get_rmia_score_multi(target_model, ref_models[:8], img, lbl, z_samples)
+
+# Print the results
+print(f"RMIA Membership Scores (closer to 1.0 is more likely a member)")
+print(f"RMIA Membership Score for 1 ref_model: {score1ref:.4f}")
+print(f"RMIA Membership Score for 2 ref_models: {score2ref:.4f}")
+print(f"RMIA Membership Score for 4 ref_models: {score4ref:.4f}")
+print(f"RMIA Membership Score for 8 ref_models: {score8ref:.4f}")
+
+================================================================================
+SECTION 8: COMPREHENSIVE ATTACK EVALUATION
+================================================================================
+
+"""
+Test the RMIA attack on 200 samples (100 members + 100 non-members)
+to evaluate overall attack performance using ROC curve and AUC.
+"""
+
+# Initialize empty lists to store results
+all_scores = []  # Will store RMIA scores for each sample
+all_labels = []  # Will store true labels (1=member, 0=non-member)
+
+# Test on 100 known members from the training set
+for i in range(100):
+    # Extract member sample
+    img, lbl = target_train[i]
+    
+    # Calculate RMIA score using all 8 reference models
+    score = get_rmia_score_multi(target_model, ref_models, img, lbl, z_samples)
+    
+    # Store the score
+    all_scores.append(score)
+    
+    # Label as member (1)
+    all_labels.append(1)
+
+# Test on 100 non-members from the test set
+for i in range(100):
+    # Extract non-member sample
+    img, lbl = target_test[i]
+    
+    # Calculate RMIA score using all 8 reference models
+    score = get_rmia_score_multi(target_model, ref_models, img, lbl, z_samples)
+    
+    # Store the score
+    all_scores.append(score)
+    
+    # Label as non-member (0)
+    all_labels.append(0)
+
+================================================================================
+SECTION 9: ROC CURVE AND AUC CALCULATION
+================================================================================
+
+"""
+Calculate ROC curve and AUC to measure attack performance.
+
+ROC Curve: Shows trade-off between True Positive Rate and False Positive Rate
+AUC: Area Under Curve - single metric summarizing performance
+  - AUC = 0.5: Random guessing (no better than coin flip)
+  - AUC = 1.0: Perfect classification
+  - AUC = 0.66: Our result - significantly better than random
+"""
+
+# Calculate False Positive Rate, True Positive Rate, and thresholds
+# fpr: probability of classifying non-member as member
+# tpr: probability of correctly identifying a member
+# thresholds: different score thresholds used to compute fpr/tpr
+fpr, tpr, thresholds = roc_curve(all_labels, all_scores)
+
+# Calculate Area Under the ROC Curve
+# This gives a single number measuring overall attack performance
+roc_auc = auc(fpr, tpr)
+
+# Print the AUC result with 4 decimal places
+print(f"AUC: {roc_auc:.4f}")
+
+# Create a new figure with specified size (10 inches wide, 6 inches tall)
+plt.figure(figsize=(10, 6))
+
+# Plot the ROC curve
+# lw=2: line width
+# label: text for legend showing AUC value
+plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.2f})')
+
+# Plot diagonal reference line representing random guessing
+# color='navy': dark blue color
+# lw=2: line width
+# linestyle='--': dashed line
+# label: text for legend
+plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label='Random Guess')
+
+# Set x-axis limits from 0.0 to 1.0
+plt.xlim([0.0, 1.0])
+
+# Set y-axis limits from 0.0 to 1.05 (slightly above 1.0 for spacing)
+plt.ylim([0.0, 1.05])
+
+# Set x-axis label
+plt.xlabel('False Positive Rate')
+
+# Set y-axis label
+plt.ylabel('True Positive Rate')
+
+# Set plot title
+plt.title('ROC Curve for RMIA Attack')
+
+# Add legend in lower right corner
+plt.legend(loc="lower right")
+
+# Add grid for better readability
+# alpha=0.3: 30% transparency
+plt.grid(True, alpha=0.3)
+
+# Display the plot
+plt.show()
+
+================================================================================
+SECTION 10: SCORE DISTRIBUTION VISUALIZATION
+================================================================================
+
+"""
+Create histogram showing the distribution of RMIA scores for
+members vs. non-members. Clear separation indicates effective attack.
+"""
+
+# Separate scores into member and non-member groups
+# Use list comprehension with conditional filtering
+member_scores_only = [score for score, label in zip(all_scores, all_labels) if label == 1]
+non_member_scores_only = [score for score, label in zip(all_scores, all_labels) if label == 0]
+
+# Create a new figure with specified size (8 inches wide, 5 inches tall)
+plt.figure(figsize=(8, 5))
+
+# Plot histogram for member scores
+# bins=20: divide the score range into 20 bins
+# alpha=0.6: 60% opacity (allows seeing overlap)
+# color='blue': bar color
+# label: text for legend
+# density=True: normalize to show probability density
+plt.hist(member_scores_only, bins=20, alpha=0.6, color='blue', label='Members', density=True)
+
+# Plot histogram for non-member scores
+# Uses same parameters but different color
+plt.hist(non_member_scores_only, bins=20, alpha=0.6, color='orange', label='Non-Members', density=True)
+
+# Set x-axis label
+plt.xlabel('RMIA Score')
+
+# Set y-axis label
+plt.ylabel('Density')
+
+# Set plot title
+plt.title('Distribution of Membership Scores')
+
+# Add legend to identify which color represents which group
+plt.legend()
+
+# Add grid for better readability
+# alpha=0.3: 30% transparency
+plt.grid(True, alpha=0.3)
+
+# Display the plot
+plt.show()
+
+================================================================================
+ANALYSIS SUMMARY
+================================================================================
+
+Key Results:
+- AUC = 0.6647 (66.47%) with 8 reference models
+- This is ~4-5% lower than the paper's 71.02% with 4 models
+
+Reasons for difference:
+1. Training Duration: 5 epochs vs. 100 epochs in paper
+   - Less overfitting means weaker membership signal
+   
+2. Evaluation Scale: 200 samples vs. thousands in paper
+   - Higher variance in AUC estimate with fewer samples
+   
+3. Population Size: 100 z-samples vs. larger sets in paper
+   - Fewer likelihood ratio comparisons
+
+4. Model Architecture: ResNet-18 may differ from paper's exact setup
+
+Despite differences, the attack clearly works:
+- Significantly better than random guessing (50%)
+- Clear separation in score distributions
+- Members generally score higher than non-members
+
+This validates the RMIA attack concept and implementation.
+
+================================================================================
+END OF DOCUMENTED CODE
+================================================================================

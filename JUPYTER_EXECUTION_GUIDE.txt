@@ -1,0 +1,364 @@
+================================================================================
+JUPYTER NOTEBOOK EXECUTION GUIDE: Which Cells to Re-run When Changing Parameters
+================================================================================
+
+This guide explains which code blocks (cells) you need to re-run in part1.ipynb
+when you change specific parameters for the three research questions.
+
+================================================================================
+UNDERSTANDING CELL DEPENDENCIES
+================================================================================
+
+The notebook has a LINEAR DEPENDENCY structure:
+
+Cell 1: Import libraries
+Cell 2: Define train_model() function
+Cell 3: Define get_rmia_score_multi() function
+Cell 4: Load data and train TARGET model
+Cell 5: Train REFERENCE models (multiple)
+Cell 6: Single sample test (demonstration)
+Cell 7: Full evaluation (100 members + 100 non-members)
+Cell 8: ROC curve and AUC calculation
+Cell 9: Histogram visualization
+
+DEPENDENCY CHAIN:
+Cell 1 → Cell 2 → Cell 3 → Cell 4 → Cell 5 → Cell 6
+                                   ↓
+                                Cell 7 → Cell 8 → Cell 9
+
+================================================================================
+QUESTION 1: COMPARING TO PAPER (epochs, sample size, ref models, z-samples)
+================================================================================
+
+CHANGE 1: Increase epochs from 5 to 100 (Line 72)
+---------------------------------------------------
+Location: Cell 2 - train_model function definition
+Change: def train_model(dataloader, epochs=5):
+To:     def train_model(dataloader, epochs=100):
+
+CELLS TO RE-RUN:
+✓ Cell 2: Function definition (MUST run to update the function)
+✓ Cell 4: Target model training (uses train_model)
+✓ Cell 5: Reference model training (uses train_model)
+✓ Cell 6: Single sample test (optional - for quick check)
+✓ Cell 7: Full evaluation (uses trained models)
+✓ Cell 8: ROC/AUC calculation (uses results from Cell 7)
+✓ Cell 9: Histogram (uses results from Cell 7)
+
+✗ Cell 1: Imports (NO need to re-run)
+✗ Cell 3: get_rmia_score_multi function (NO changes)
+
+TOTAL RUNTIME: ~8-12 hours (100 epochs is SLOW!)
+
+
+CHANGE 2: Increase evaluation samples (Lines 326, 333)
+-------------------------------------------------------
+Location: Cell 7 - Full evaluation loop
+Change: for i in range(100):  # Members
+        for i in range(100):  # Non-members
+To:     for i in range(1000):  # Members
+        for i in range(1000):  # Non-members
+
+CELLS TO RE-RUN:
+✓ Cell 7: Full evaluation (where the change is)
+✓ Cell 8: ROC/AUC calculation (uses new results)
+✓ Cell 9: Histogram (uses new results)
+
+✗ Cell 1-6: NO need to re-run (models already trained)
+
+TOTAL RUNTIME: ~2-4 hours (10x more evaluations)
+
+NOTE: You can do this AFTER cells 4-5 finish training!
+
+
+CHANGE 3: Reduce reference models to 4 (Line 237)
+--------------------------------------------------
+Location: Cell 5 - Reference model training
+Change: num_ref_models = 8
+To:     num_ref_models = 4
+
+CELLS TO RE-RUN:
+✓ Cell 5: Reference model training (creates fewer models)
+✓ Cell 6: Single sample test (uses ref_models)
+✓ Cell 7: Full evaluation (uses ref_models)
+✓ Cell 8: ROC/AUC calculation (uses results from Cell 7)
+✓ Cell 9: Histogram (uses results from Cell 7)
+
+✗ Cell 1-4: NO need to re-run (target model unchanged)
+
+TOTAL RUNTIME: ~20-30 minutes (half as many models to train)
+
+
+CHANGE 4: Increase z-samples population (Line 285)
+---------------------------------------------------
+Location: Cell 6 - Single sample test (and reused in Cell 7)
+Change: z_samples = [population_data[i] for i in range(100)]
+To:     z_samples = [population_data[i] for i in range(500)]
+
+CELLS TO RE-RUN:
+✓ Cell 6: Single sample test (redefines z_samples)
+✓ Cell 7: Full evaluation (uses z_samples)
+✓ Cell 8: ROC/AUC calculation (uses results)
+✓ Cell 9: Histogram (uses results)
+
+✗ Cell 1-5: NO need to re-run (models unchanged)
+
+TOTAL RUNTIME: ~1-2 hours (5x more comparisons per sample)
+
+
+COMBINED CHANGES (ALL for Question 1):
+---------------------------------------
+If you change ALL four parameters at once:
+
+CELLS TO RE-RUN:
+✓ Cell 2: epochs change
+✓ Cell 4: Target training (100 epochs)
+✓ Cell 5: Reference training (100 epochs, 4 models)
+✓ Cell 6: Single test (500 z-samples)
+✓ Cell 7: Full eval (1000 members + 1000 non-members)
+✓ Cell 8: ROC/AUC
+✓ Cell 9: Histogram
+
+TOTAL RUNTIME: ~12-16 hours (mainly from 100 epochs)
+
+================================================================================
+QUESTION 2: NUMBER OF REFERENCE MODELS (multiple experiments)
+================================================================================
+
+TESTING: 1, 2, 4, 8, 16, 32 reference models
+---------------------------------------------
+
+For EACH experiment value:
+
+Location: Cell 5 - num_ref_models
+Change: num_ref_models = 8
+To:     num_ref_models = 1  (then 2, then 4, etc.)
+
+EXPERIMENT 1: num_ref_models = 1
+---------------------------------
+CELLS TO RE-RUN:
+✓ Cell 5: Train 1 reference model
+✓ Cell 7: Full evaluation
+✓ Cell 8: ROC/AUC (record result)
+✗ Cell 1-4: Keep same
+✗ Cell 6, 9: Optional
+
+EXPERIMENT 2: num_ref_models = 2
+---------------------------------
+CELLS TO RE-RUN:
+✓ Cell 5: Train 2 reference models
+✓ Cell 7: Full evaluation
+✓ Cell 8: ROC/AUC (record result)
+✗ Cell 1-4: Keep same
+
+... repeat for 4, 8, 16, 32
+
+IMPORTANT: You do NOT need to re-run Cell 4 (target model) between experiments!
+The target model stays the same - only reference models change.
+
+WORKFLOW:
+1. Run Cell 1-4 ONCE (imports + target model)
+2. For each num_ref_models value:
+   a. Change line 237
+   b. Run Cell 5 (train ref models)
+   c. Run Cell 7 (evaluation)
+   d. Run Cell 8 (AUC - RECORD THIS)
+   e. Save the AUC value
+3. Compare all AUC values
+
+RUNTIME PER EXPERIMENT (5 epochs):
+- 1 model:  ~2-3 minutes training + ~15 min eval = ~18 min
+- 2 models: ~5-6 minutes training + ~15 min eval = ~21 min
+- 4 models: ~10-12 min training + ~15 min eval = ~27 min
+- 8 models: ~20-25 min training + ~15 min eval = ~40 min
+- 16 models: ~40-50 min training + ~20 min eval = ~70 min
+- 32 models: ~80-100 min training + ~30 min eval = ~130 min
+
+TOTAL FOR ALL 6 EXPERIMENTS: ~5-6 hours
+
+================================================================================
+QUESTION 3: CLASS IMBALANCE (data split changes)
+================================================================================
+
+CHANGE 1: Reduce training data size (Line 203)
+-----------------------------------------------
+Location: Cell 4 - Data split
+Change: target_train, target_test, population_data, _ = torch.utils.data.random_split(
+            full_trainset, [20000, 20000, 10000, 0])
+To:     target_train, target_test, population_data, _ = torch.utils.data.random_split(
+            full_trainset, [2000, 20000, 10000, 17000])
+
+CELLS TO RE-RUN:
+✓ Cell 4: Data split + target training (new split)
+✓ Cell 5: Reference training (may need new population)
+✓ Cell 7: Full evaluation (smaller training set)
+✓ Cell 8: ROC/AUC
+✓ Cell 9: Histogram
+
+✗ Cell 1-3: NO changes
+
+RUNTIME: ~45-60 minutes
+
+WARNING: With only 2000 training samples, you may not have 100+ samples
+of each class available for evaluation in Cell 7!
+
+
+CHANGE 2: Reduce population data (Line 203)
+--------------------------------------------
+Location: Cell 4 - Data split
+Change: [20000, 20000, 10000, 0]
+To:     [20000, 20000, 1000, 9000]
+
+CELLS TO RE-RUN:
+✓ Cell 4: Data split + target training
+✓ Cell 5: Reference training (smaller population)
+✓ Cell 7: Full evaluation
+✓ Cell 8: ROC/AUC
+✓ Cell 9: Histogram
+
+RUNTIME: ~45-60 minutes
+
+
+CHANGE 3: Vary evaluation set sizes (Lines 326, 333)
+----------------------------------------------------
+Location: Cell 7 - Evaluation loops
+Change: for i in range(100):
+To:     for i in range(50):  # or 200, or 500
+
+CELLS TO RE-RUN:
+✓ Cell 7: Full evaluation
+✓ Cell 8: ROC/AUC
+✓ Cell 9: Histogram
+
+✗ Cell 1-6: NO changes
+
+RUNTIME: Proportional to sample count
+- 50 samples:  ~7-10 minutes
+- 200 samples: ~30-40 minutes
+- 500 samples: ~75-90 minutes
+
+================================================================================
+SPECIAL CONSIDERATIONS
+================================================================================
+
+JUPYTER KERNEL RESTART:
+-----------------------
+If you RESTART the kernel or close/reopen the notebook:
+→ You MUST re-run ALL cells from the beginning (Cell 1 → Cell 9)
+→ Variables and trained models are lost on restart
+
+PARTIAL EXECUTION:
+------------------
+If you only want to test visualization changes (Cell 9):
+→ Only re-run Cell 9 if Cell 7-8 data is still in memory
+→ If unsure, re-run Cell 7-8-9 together
+
+MEMORY ISSUES:
+--------------
+If you run out of RAM:
+1. Restart kernel (this clears memory)
+2. Reduce batch sizes in dataloaders
+3. Reduce num_ref_models or evaluation samples
+4. Use smaller dataset split
+
+SAVING INTERMEDIATE RESULTS:
+----------------------------
+To avoid re-running long training:
+
+After Cell 4 (target model trained):
+```python
+torch.save(target_model.state_dict(), 'target_model.pth')
+```
+
+After Cell 5 (reference models trained):
+```python
+for i, model in enumerate(ref_models):
+    torch.save(model.state_dict(), f'ref_model_{i}.pth')
+```
+
+Then reload later:
+```python
+target_model.load_state_dict(torch.load('target_model.pth'))
+```
+
+================================================================================
+EXECUTION DECISION TREE
+================================================================================
+
+DID YOU CHANGE...
+
+├─ Function definitions (Cell 2 or Cell 3)?
+│  → Re-run that cell + all cells that use that function
+│
+├─ Training epochs?
+│  → Re-run Cell 2 + Cell 4 + Cell 5 + Cell 7-8-9
+│
+├─ Data split sizes?
+│  → Re-run Cell 4 + Cell 5 + Cell 7-8-9
+│
+├─ Number of reference models?
+│  → Re-run Cell 5 + Cell 7-8-9
+│  → Cell 4 can stay
+│
+├─ z_samples size?
+│  → Re-run Cell 6 + Cell 7-8-9
+│  → Cell 4-5 can stay
+│
+├─ Evaluation sample counts?
+│  → Re-run Cell 7-8-9
+│  → Cell 1-6 can stay
+│
+└─ Only visualization (plots)?
+   → Re-run Cell 8 and/or Cell 9
+   → All previous cells can stay
+
+================================================================================
+QUICK REFERENCE TABLE
+================================================================================
+
+Parameter Changed          Cell to Change    Cells to Re-run    Runtime
+-----------------          --------------    ---------------    -------
+epochs                     Cell 2            2,4,5,7,8,9       8-12 hrs
+eval samples               Cell 7            7,8,9             30min-4hrs
+num_ref_models            Cell 5            5,7,8,9           20min-2hrs
+z_samples                 Cell 6            6,7,8,9           1-2 hrs
+data split                Cell 4            4,5,7,8,9         45-60 min
+
+Multiple experiments:
+- Keep Cell 4 (target) constant
+- Vary Cell 5 (references) per experiment
+- Re-run Cell 7-8 for each
+
+================================================================================
+BEST PRACTICES
+================================================================================
+
+1. PLAN AHEAD: Make all changes to the same "level" at once
+   - Example: Change epochs AND data split together (both in Cell 2/4)
+   - This avoids redundant re-training
+
+2. TEST SMALL: Before running 100 epochs or 1000 samples
+   - Try 10 epochs and 100 samples first
+   - Verify the code runs without errors
+   - Then scale up
+
+3. SAVE FREQUENTLY: After long-running cells
+   - Save models after Cell 4 and 5
+   - Export results after Cell 8
+   - Take screenshots of plots
+
+4. RECORD RESULTS: Keep a spreadsheet
+   - Configuration (epochs, models, samples)
+   - AUC value
+   - Runtime
+   - Any observations
+
+5. SEPARATE EXPERIMENTS: Don't mix questions
+   - Do Q1 (paper comparison) completely first
+   - Then Q2 (reference models)
+   - Then Q3 (imbalance)
+   - This keeps results organized
+
+================================================================================
+END OF GUIDE
+================================================================================

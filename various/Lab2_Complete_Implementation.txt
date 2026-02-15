@@ -1,0 +1,511 @@
+PRACTICE LAB 2 - COMPLETE IMPLEMENTATION GUIDE
+==============================================
+
+PART I: Model Inversion with RMIA (Robust Membership Inference Attack)
+======================================================================
+
+OVERVIEW:
+---------
+This part implements a Robust Membership Inference Attack (RMIA) against a ResNet-18 model trained on CIFAR-10 
+to determine whether specific samples were part of the model's training data.
+
+TASK 1.1: IMPLEMENTING THE ATTACK
+----------------------------------
+
+Implementation Status: COMPLETED (80%)
+
+What has been implemented in main.py:
+1. Basic RMIA score calculation using single reference model
+2. Training pipeline for target model and reference model
+3. Dataset partitioning (20k members, 20k non-members, 10k population)
+4. Ratio-based membership inference calculation
+
+Key Components Already in main.py:
+- train_model(): Trains ResNet-18 for 5 epochs
+- get_rmia_score(): Calculates RMIA score for a single sample
+- calculate_ratio(): Computes probability ratios between target and reference models
+- Basic data loading and model initialization
+
+What has been implemented in part1.ipynb:
+1. Enhanced RMIA with multiple reference models
+2. get_rmia_score_multi(): Uses multiple reference models for more stable estimates
+3. Offline scaling approximation with parameter 'a' for calibration
+4. Evaluation framework with proper metrics (ROC, AUC)
+5. Visualization of results (TPR-FPR curves, score distributions)
+
+Current Results (from part1.ipynb):
+- AUC = 0.6647 with 8 reference models
+- This validates the attack is working, though lower than paper's results due to:
+  * Different model architecture (ResNet-18 vs. paper's models)
+  * Fewer training epochs (5 vs. 100 in paper)
+  * Smaller evaluation set (200 samples vs. thousands)
+
+IMPROVEMENTS NEEDED:
+-------------------
+
+1. Multiple Reference Models Enhancement:
+   - Current: Uses 8 reference models
+   - Recommended: Test with 1, 2, 4, 8, 16, 32, 64, 127 reference models
+   - Implement both IN and OUT reference models for online attack mode
+
+2. Better Probability Estimation (from RMIA paper):
+   Using Bayes rule approach:
+   
+   LRθ(x, z) = [Pr(x|θ) / Pr(x)] / [Pr(z|θ) / Pr(z)]
+   
+   Where:
+   - Pr(x|θ) is the softmax output of target model on sample x
+   - Pr(x) is computed by averaging over reference models
+   - Need to implement both PrIN(x) and PrOUT(x) for full online attack
+
+3. Improved Score Calculation:
+   ScoreMIA(x; θ) = Pr_z [LRθ(x, z) ≥ γ]
+   
+   This measures the fraction of population samples z that x can γ-dominate
+
+4. Calibration Parameters:
+   - gamma (γ): threshold for likelihood ratio (default: 1.0)
+   - a: offline scaling parameter (needs tuning, typically 0-1)
+
+TASK 1.2: ANALYSIS AND EVALUATION
+----------------------------------
+
+Question 1: How close do your results get to the paper?
+-------------------------------------------------------
+Current Implementation Results:
+- AUC: 0.6647 (8 reference models, 5 epochs training)
+- Paper Results: 
+  * 68.64±0.43% with 1 reference model
+  * 70.13±0.37% with 2 reference models  
+  * 71.02±0.37% with 4 reference models
+
+Gap Analysis:
+The results are approximately 6-8% lower than the paper. Main reasons:
+1. Training epochs: 5 vs 100 (significantly impacts model memorization)
+2. Model architecture differences
+3. Evaluation dataset size: 200 vs several thousand samples
+4. Potential differences in hyperparameter tuning
+
+To Improve:
+- Increase training epochs to at least 50-100
+- Train more reference models (target: 16-32)
+- Increase evaluation set to 1000+ samples
+- Fine-tune the 'a' parameter for offline scaling
+
+Question 2: How does the number of reference models affect attack success?
+--------------------------------------------------------------------------
+Analysis Framework:
+
+Expected Results (based on RMIA paper):
+- With 1 model: Baseline performance but higher variance
+- With 2-4 models: Significant improvement, more stable estimates
+- With 8-16 models: Diminishing returns start
+- With 64+ models: Marginal improvements only
+
+Experiment Plan:
+1. Test with [1, 2, 4, 8, 16, 32, 64, 127] reference models
+2. For each configuration, measure:
+   - AUC
+   - TPR at FPR = 0.01%, 0.1%, 1%
+   - Standard deviation across multiple runs
+3. Plot: Number of reference models vs. AUC
+4. Identify "sweet spot" where cost-benefit is optimal
+
+Ideal Number:
+Based on RMIA paper, 2-4 reference models provide good balance:
+- Cost-effective (quick to train)
+- Stable performance (low variance)
+- Practical for real-world deployment
+
+Question 3: What happens with class imbalance?
+----------------------------------------------
+Experiment Design:
+1. Create deliberately imbalanced training sets:
+   - Scenario A: Remove 80% of samples from classes 0-4
+   - Scenario B: Remove 50% of samples from classes 0-2
+   - Scenario C: Normal balanced distribution (control)
+
+2. For each scenario:
+   - Train target model
+   - Run RMIA attack
+   - Measure performance per class and overall
+
+Expected Outcomes:
+- Underrepresented classes: Higher false positive rate
+- Overrepresented classes: Better detection (higher TPR)
+- Overall AUC: Likely to decrease with imbalance
+
+Mitigation Strategies:
+- Class-specific thresholds
+- Weighted loss during training
+- Separate reference models per class
+
+
+PART II: OBFUSCATION WITH HRR (Holographically Reduced Representations)
+========================================================================
+
+OVERVIEW:
+---------
+Implement HRR defense mechanism to protect against membership inference attacks by binding 
+input images with secret vectors using 2D circular convolution.
+
+TASK 2.1: DEFENDING AGAINST THE ATTACK
+---------------------------------------
+
+Implementation Status: NOT STARTED (0%)
+
+Core Concept:
+The HRR defense obfuscates both inputs and outputs using binding operations:
+- Input: x̂ = x ⊛ s (bind image x with secret s)
+- Output: r = fW(x̂) (process through U-Net)
+- Unbinding: y = fP(r ⊛ s†) (extract prediction using inverse secret)
+
+Architecture Components:
+
+1. 2D HRR Binding Operation:
+   ```python
+   def binding_2d(x, s):
+       """
+       Binds image x with secret s using 2D circular convolution
+       Uses 2D FFT instead of 1D to preserve spatial structure
+       """
+       # x: input image [H x W x C]
+       # s: secret vector [H x W x C]
+       
+       # Apply 2D FFT
+       F_x = torch.fft.fft2(x, dim=(0, 1))
+       F_s = torch.fft.fft2(s, dim=(0, 1))
+       
+       # Element-wise multiplication in frequency domain
+       B = F_x * F_s
+       
+       # Inverse FFT to get bound result
+       bound = torch.fft.ifft2(B, dim=(0, 1)).real
+       
+       return bound
+   ```
+
+2. Secret Generation (with projection):
+   ```python
+   def generate_secret(H, W, D):
+       """
+       Generate secret with complex unit magnitude projection
+       Following improved initialization from paper
+       """
+       # Sample from normal distribution
+       s = torch.randn(H, W, D) * (1.0 / torch.sqrt(H * W * D))
+       
+       # Apply projection to unit magnitude
+       F_s = torch.fft.fft2(s, dim=(0, 1))
+       magnitude = torch.abs(F_s)
+       s_projected = torch.fft.ifft2(F_s / (magnitude + 1e-10), dim=(0, 1)).real
+       
+       return s_projected
+   ```
+
+3. Unbinding Operation:
+   ```python
+   def unbinding_2d(B, s):
+       """
+       Unbinds result B using inverse of secret s
+       """
+       # Compute inverse secret s†
+       F_s = torch.fft.fft2(s, dim=(0, 1))
+       F_s_inv = 1.0 / (F_s + 1e-10)  # Add epsilon for numerical stability
+       
+       # Apply unbinding
+       F_B = torch.fft.fft2(B, dim=(0, 1))
+       unbound = torch.fft.ifft2(F_B * F_s_inv, dim=(0, 1)).real
+       
+       return unbound
+   ```
+
+4. Network Architecture:
+
+   a) Main Network fW (U-Net):
+      - Input/Output: Same shape (critical for HRR to work)
+      - 4 rounds of encoding/decoding
+      - Skip connections for preserving information
+      - Filters: 64 -> 128 -> 256 -> 512 -> 256 -> 128 -> 64
+   
+   b) Prediction Network fP:
+      - Takes unbounded output r ⊛ s†
+      - 3 rounds of conv + pooling
+      - 2 FC layers
+      - Outputs class predictions
+   
+   c) Adversarial Network fA:
+      - Same structure as fP
+      - Takes raw output r (without unbinding)
+      - Gradient reversal: multiplies gradients by -1
+      - Forces fW to require secret s for meaningful output
+
+5. Training Algorithm:
+   ```python
+   def train_csps(dataset, epochs=100):
+       for epoch in range(epochs):
+           for x_i, y_i in dataset:
+               # Generate new secret for each sample
+               s = generate_secret(H, W, D)
+               
+               # Bind input
+               x_hat = binding_2d(x_i, s)
+               
+               # Forward through main network (would be on untrusted server)
+               r = f_W(x_hat)
+               
+               # Prediction network (user side with secret)
+               y_pred = f_P(unbinding_2d(r, s))
+               
+               # Adversarial network (tries without secret)
+               y_attack = ReverseGrad(f_A(r))
+               
+               # Compute losses
+               loss = CrossEntropy(y_pred, y_i) + CrossEntropy(y_attack, y_i)
+               
+               # Backpropagate
+               loss.backward()
+               optimizer.step()
+   ```
+
+Simplified Pipeline (as per assignment requirements):
+- Replace central Unet with ResNet-18 (modify to have same input/output shape)
+- Leave out adversarial network initially (though it's crucial for robustness)
+- No additional accuracy mitigation measures
+
+Key Modifications for ResNet-18:
+```python
+class ModifiedResNet18(nn.Module):
+    def __init__(self):
+        super().__init__()
+        # Use ResNet-18 backbone
+        self.encoder = resnet18(pretrained=False)
+        
+        # Add decoder to match input dimensions
+        # This is critical - output must match input shape
+        self.decoder = nn.Sequential(
+            # Upsample back to original dimensions
+            nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2),
+            nn.ReLU(),
+            nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2),
+            nn.ReLU(),
+            nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2),
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 3, kernel_size=2, stride=2),
+        )
+    
+    def forward(self, x):
+        # Encode
+        features = self.encoder.forward_features(x)
+        # Decode back to input shape
+        output = self.decoder(features)
+        return output
+```
+
+TASK 2.2: ANALYSIS AND EVALUATION
+----------------------------------
+
+Question 1: How effective is HRR at preventing RMIA from succeeding?
+--------------------------------------------------------------------
+
+Evaluation Plan:
+1. Train model with HRR defense
+2. Run RMIA attack on HRR-protected model
+3. Compare with baseline (no defense):
+   - AUC reduction
+   - TPR at various FPR thresholds
+   - Accuracy trade-off
+
+Expected Results (from paper):
+- Significant AUC drop (potentially 20-30% reduction)
+- TPR at zero FPR should approach random guessing
+- Some accuracy loss (5-15%) depending on implementation
+
+Metrics to Report:
+- Baseline AUC: X%
+- HRR-protected AUC: Y%
+- AUC reduction: (X-Y)%
+- Test accuracy: baseline vs protected
+- Visual comparison: ROC curves
+
+Question 2: Does HRR qualify as encryption?
+-------------------------------------------
+
+Analysis Framework:
+HRR is NOT true encryption because:
+
+1. Mathematical Properties:
+   - Not provably secure (heuristic security only)
+   - Binding operation is deterministic (not probabilistic)
+   - Partial information leakage possible through repeated queries
+
+2. Security Model:
+   - Works as "pseudo-encryption" or obfuscation
+   - Provides practical security, not cryptographic guarantees
+   - Similar to "one-time pad" but without perfect secrecy
+
+3. Comparison with Real Encryption:
+   
+   Similarities:
+   - Uses secret key (vector s)
+   - Obfuscates input/output
+   - Different secret per sample
+   
+   Differences:
+   - No security proof
+   - Vulnerable to determined adversaries with computational power
+   - Information-theoretic security not guaranteed
+
+4. When to Use HRR:
+   ✓ Good for: Cost-effective privacy in production
+   ✓ Good for: Reducing computational overhead vs. FHE/SMC
+   ✗ Bad for: Mission-critical privacy applications
+   ✗ Bad for: Scenarios requiring provable security
+
+Conclusion:
+HRR should be considered a "defense mechanism" or "obfuscation technique" rather 
+than encryption. It provides practical privacy benefits with minimal computational 
+cost, but cannot replace cryptographic encryption where strong security is required.
+
+Question 3: Could an attacker adapt to overcome this defense?
+-------------------------------------------------------------
+
+Potential Attack Vectors:
+
+1. Clustering Attack (from evaluation):
+   - Cluster outputs r in latent space
+   - Try to identify patterns without secret s
+   - Paper shows this fails: ARI ≤ 1.5% (near random)
+
+2. Model Inversion Attack:
+   - Use Frechet Inception Distance (FID)
+   - Optimize secret ŝ to generate realistic images
+   - Paper shows this also fails (poor reconstruction)
+
+3. Unrealistically Strong Adversary:
+   - Has all training data + labels
+   - Knows binding/unbinding procedure
+   - Can train own model on output r
+   - Even this achieves only 2.6-4.7× random guessing
+
+4. Adaptive Attacks:
+   
+   a) Statistical Analysis:
+      - Analyze distribution of r across many samples
+      - Look for invariants despite secret rotation
+      - Mitigation: Gradient reversal on fA ensures this fails
+   
+   b) Side-Channel Attacks:
+      - Timing analysis
+      - Power consumption analysis
+      - These are out of scope for ML privacy
+   
+   c) Collaborative Attacks:
+      - Multiple queries with related secrets
+      - Pattern analysis across responses
+      - Mitigation: Each query uses independent random secret
+
+5. Why Attacks Fail:
+   - Secret s is high-dimensional (H×W×D)
+   - New secret per query prevents pattern analysis
+   - Adversarial training ensures output r is uninformative
+   - 2D FFT creates global dependencies
+
+Attack Resistance Summary:
+- Clustering: Robust (ARI < 2%)
+- Inversion: Robust (poor reconstruction)
+- Supervised learning without s: Limited success (2-5× random)
+- Known vulnerabilities: None identified in paper
+
+However, should note:
+- Not proven secure against all possible attacks
+- Future work might discover weaknesses
+- Should use with caution in high-stakes scenarios
+
+
+IMPLEMENTATION ROADMAP
+======================
+
+Phase 1: Complete RMIA Implementation (Part I)
+----------------------------------------------
+1. ✓ Basic RMIA with single reference model (DONE in main.py)
+2. ✓ Multiple reference models (DONE in part1.ipynb)
+3. ⚠ IN/OUT reference models for online attack
+4. ⚠ Comprehensive evaluation across reference model counts
+5. ⚠ Class imbalance experiments
+6. ⚠ Complete analysis for Task 1.2
+
+Phase 2: Implement HRR Defense (Part II)
+-----------------------------------------
+1. ☐ 2D HRR binding/unbinding operations
+2. ☐ Secret generation with projection
+3. ☐ Modified ResNet-18 with encoder-decoder structure
+4. ☐ Prediction network fP
+5. ☐ (Optional) Adversarial network fA with gradient reversal
+6. ☐ Training loop for CSPS
+7. ☐ Integration with CIFAR-10 pipeline
+
+Phase 3: Evaluation & Analysis (Part II)
+-----------------------------------------
+1. ☐ Baseline: RMIA on unprotected model
+2. ☐ HRR-protected: RMIA on protected model
+3. ☐ Clustering attacks
+4. ☐ Inversion attacks
+5. ☐ Comparison metrics and visualizations
+6. ☐ Complete analysis for Task 2.2
+
+Phase 4: Report Compilation
+----------------------------
+1. ☐ Methodology section
+2. ☐ Results with visualizations
+3. ☐ Analysis answering all questions
+4. ☐ Discussion of limitations
+5. ☐ Conclusion
+
+
+CURRENT PROGRESS SUMMARY
+========================
+
+PART I - RMIA Implementation: ~75% Complete
+- ✓ Basic attack framework
+- ✓ Single reference model attack
+- ✓ Multiple reference model attack  
+- ✓ Basic evaluation (AUC, TPR/FPR)
+- ✓ Visualization
+- ⚠ Comprehensive evaluation needed
+- ⚠ Class imbalance experiments needed
+- ⚠ Full analysis needed
+
+PART II - HRR Defense: ~0% Complete
+- ☐ HRR operations not implemented
+- ☐ Modified ResNet-18 not implemented
+- ☐ Training pipeline not implemented
+- ☐ No evaluation conducted
+- ☐ No analysis completed
+
+Overall Completion: ~37.5%
+
+
+REFERENCES
+==========
+1. Low-Cost High-Power Membership Inference Attacks (RMIA Paper)
+   - arXiv:2312.03262
+   - Key concepts: Pairwise likelihood ratios, offline/online attacks
+
+2. Deploying CNNs on Untrusted Platforms Using 2D HRR (HRR Defense Paper)
+   - arXiv:2206.05893
+   - Key concepts: 2D HRR, CSPS, gradient reversal
+
+3. Course materials and practice2.txt for assignment requirements
+
+
+NOTES FOR IMPLEMENTATION
+=========================
+- Use PyTorch for all implementations
+- CIFAR-10 dataset from torchvision
+- ResNet-18 from torchvision.models
+- Train for 5 epochs initially, increase to 50-100 for final results
+- Batch size: 64
+- Learning rate: 0.001
+- Optimizer: Adam
+- Use GPU if available for faster training

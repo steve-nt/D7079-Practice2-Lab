@@ -1,0 +1,368 @@
+================================================================================
+EXPERIMENTAL GUIDE: Testing Different Numbers of Reference Models
+================================================================================
+
+QUESTION: How does the number of reference models affect the attack's success? 
+          Is there an ideal number?
+
+To answer this question, you need to run the experiment with DIFFERENT numbers
+of reference models and compare the results.
+
+================================================================================
+STEP-BY-STEP INSTRUCTIONS
+================================================================================
+
+STEP 1: Change the Number of Reference Models to Train
+-------------------------------------------------------
+FILE: part1.ipynb
+CELL: Around line 151-169 (the cell that trains reference models)
+
+FIND THIS LINE:
+    Line 154: num_ref_models = 8  # You can increase this (e.g., 4, 8, or 16)
+
+CHANGE TO DIFFERENT VALUES:
+    Try these experiments in order:
+
+    Experiment 1:  num_ref_models = 1   (baseline - minimal)
+    Experiment 2:  num_ref_models = 2   (paper's common case)
+    Experiment 3:  num_ref_models = 4   (paper's recommended)
+    Experiment 4:  num_ref_models = 8   (current setting)
+    Experiment 5:  num_ref_models = 16  (higher, test diminishing returns)
+    Experiment 6:  num_ref_models = 32  (optional - takes longer)
+
+IMPORTANT: After changing this number, you MUST re-run:
+    - The cell that trains reference models (line 151-169)
+    - ALL subsequent cells that use ref_models
+
+
+STEP 2: Adjust Evaluation Code (if using more than 8 models)
+--------------------------------------------------------------
+FILE: part1.ipynb
+LINES: 205-213
+
+CURRENT CODE:
+    score1ref = get_rmia_score_multi(target_model, ref_models[:1], img, lbl, z_samples)
+    score2ref = get_rmia_score_multi(target_model, ref_models[:2], img, lbl, z_samples)
+    score4ref = get_rmia_score_multi(target_model, ref_models[:4], img, lbl, z_samples)
+    score8ref = get_rmia_score_multi(target_model, ref_models[:8], img, lbl, z_samples)
+
+IF YOU TRAIN 16 MODELS, ADD:
+    score16ref = get_rmia_score_multi(target_model, ref_models[:16], img, lbl, z_samples)
+    print(f"RMIA Membership Score for 16 ref_models: {score16ref:.4f}")
+
+IF YOU TRAIN 32 MODELS, ADD:
+    score32ref = get_rmia_score_multi(target_model, ref_models[:32], img, lbl, z_samples)
+    print(f"RMIA Membership Score for 32 ref_models: {score32ref:.4f}")
+
+
+STEP 3: Main Evaluation Loop
+-----------------------------
+FILE: part1.ipynb
+LINES: 240-252
+
+FIND THIS LINE:
+    Line 246: all_scores.append(get_rmia_score_multi(target_model, ref_models, img, lbl, z_samples))
+    Line 250: all_scores.append(get_rmia_score_multi(target_model, ref_models, img, lbl, z_samples))
+
+WHAT IT DOES:
+    Uses ALL trained reference models (ref_models) for evaluation
+
+NO CHANGES NEEDED HERE - it automatically uses all models you trained!
+
+
+================================================================================
+RECOMMENDED EXPERIMENTAL PROCEDURE
+================================================================================
+
+To properly answer the question, run MULTIPLE COMPLETE EXPERIMENTS:
+
+EXPERIMENT A: Test with 1 Reference Model
+------------------------------------------
+1. Set line 154: num_ref_models = 1
+2. Re-run training cells (lines 110-169)
+3. Run evaluation cells (lines 200-316)
+4. Record the AUROC value (around line 276)
+5. Save the ROC curve plot
+
+Expected training time: ~10 minutes
+Expected result: AUC ≈ 0.63-0.66 (from paper: 68.64%)
+
+
+EXPERIMENT B: Test with 2 Reference Models
+------------------------------------------
+1. Set line 154: num_ref_models = 2
+2. Re-run training cells (lines 110-169)
+3. Run evaluation cells (lines 200-316)
+4. Record the AUROC value
+5. Save the ROC curve plot
+
+Expected training time: ~20 minutes
+Expected result: AUC ≈ 0.65-0.68 (from paper: 70.13%)
+
+
+EXPERIMENT C: Test with 4 Reference Models
+------------------------------------------
+1. Set line 154: num_ref_models = 4
+2. Re-run training cells (lines 110-169)
+3. Run evaluation cells (lines 200-316)
+4. Record the AUROC value
+5. Save the ROC curve plot
+
+Expected training time: ~40 minutes
+Expected result: AUC ≈ 0.66-0.70 (from paper: 71.02%)
+
+
+EXPERIMENT D: Test with 8 Reference Models (CURRENT)
+----------------------------------------------------
+1. Already done! Check existing results
+2. Current AUROC: 0.6647
+
+Expected result: AUC ≈ 0.66-0.70
+
+
+EXPERIMENT E: Test with 16 Reference Models
+-------------------------------------------
+1. Set line 154: num_ref_models = 16
+2. Add line 209: score16ref = get_rmia_score_multi(target_model, ref_models[:16], img, lbl, z_samples)
+3. Add print statement for 16 models
+4. Re-run training cells (lines 110-169)
+5. Run evaluation cells (lines 200-316)
+6. Record the AUROC value
+7. Save the ROC curve plot
+
+Expected training time: ~2 hours
+Expected result: AUC ≈ 0.67-0.71 (diminishing returns)
+
+
+EXPERIMENT F: Test with 32 Reference Models (Optional)
+------------------------------------------------------
+1. Set line 154: num_ref_models = 32
+2. Add evaluation code for 32 models
+3. Re-run training cells
+4. Run evaluation cells
+5. Record the AUROC value
+
+Expected training time: ~4 hours
+Expected result: AUC ≈ 0.67-0.71 (minimal improvement over 16)
+
+
+================================================================================
+WHAT TO RECORD FOR EACH EXPERIMENT
+================================================================================
+
+Create a table like this:
+
+Number of      Training    AUROC     TPR @        TPR @      Improvement
+Ref Models     Time (min)  (AUC)     FPR=0.1%     FPR=0.01%  vs Previous
+---------------------------------------------------------------------------
+1              ~10         0.____    __.___%      __.___%    baseline
+2              ~20         0.____    __.___%      __.___%    +_.___%
+4              ~40         0.____    __.___%      __.___%    +_.___%
+8              ~80         0.6647    __.___%      __.___%    +_.___%
+16             ~160        0.____    __.___%      __.___%    +_.___%
+32 (optional)  ~320        0.____    __.___%      __.___%    +_.___%
+
+To get TPR at specific FPR values, you can modify the evaluation code:
+
+# After line 278, add:
+target_fpr = 0.001  # 0.1%
+idx = np.argmin(np.abs(fpr - target_fpr))
+print(f"TPR at FPR={target_fpr}: {tpr[idx]:.4f}")
+
+target_fpr = 0.0001  # 0.01%
+idx = np.argmin(np.abs(fpr - target_fpr))
+print(f"TPR at FPR={target_fpr}: {tpr[idx]:.4f}")
+
+
+================================================================================
+ADDITIONAL PARAMETERS TO EXPERIMENT WITH (Advanced)
+================================================================================
+
+1. POPULATION SAMPLE SIZE (z_samples)
+--------------------------------------
+FILE: part1.ipynb
+LINE: 202: z_samples = [population_data[i] for i in range(100)]
+
+CHANGE THE NUMBER 100 TO:
+    - 50 (fewer comparisons, faster but less stable)
+    - 200 (more comparisons, slower but more stable)
+    - 500 (comprehensive comparison)
+
+This affects how many population samples each target sample is compared against.
+
+
+2. NUMBER OF EVALUATION SAMPLES
+--------------------------------
+FILE: part1.ipynb
+LINE: 243: for i in range(100):
+
+CHANGE THE NUMBER 100 TO:
+    - 50 (faster evaluation, less reliable AUC)
+    - 200 (slower evaluation, more reliable AUC)
+    - 500 (paper-like scale, takes much longer)
+
+This is how many members and non-members you test.
+
+
+3. TRAINING EPOCHS
+------------------
+FILE: part1.ipynb
+LINE: 38: def train_model(dataloader, epochs=5):
+
+CHANGE epochs=5 TO:
+    - epochs=10 (more overfitting, stronger signal)
+    - epochs=20 (even more overfitting)
+    - epochs=100 (paper's setting, but takes VERY long)
+
+More epochs = more overfitting = easier to detect membership
+But takes proportionally longer to train!
+
+
+4. GAMMA PARAMETER (threshold in RMIA)
+---------------------------------------
+FILE: part1.ipynb
+LINE: 66: def get_rmia_score_multi(tar_model, ref_models, known_img, known_label, population_subset, gamma=1.0, a=0.3):
+
+CHANGE gamma=1.0 TO:
+    - gamma=0.5 (more lenient comparison)
+    - gamma=2.0 (stricter comparison)
+
+Paper discusses this in Section 3, equation 5.
+
+
+5. OFFLINE SCALING PARAMETER (a)
+---------------------------------
+FILE: part1.ipynb
+LINE: 66: (same line as above) a=0.3
+
+CHANGE a=0.3 TO:
+    - a=0.0 (no scaling adjustment)
+    - a=0.5 (more aggressive scaling)
+
+Paper discusses this in Appendix B.2.2.
+
+
+================================================================================
+PAPER REFERENCE VALUES (for comparison)
+================================================================================
+
+From Table 2 in the paper (CIFAR-10, ResNet models):
+
+Number of Ref Models    AUC      TPR @ 0.01% FPR    TPR @ 0.0% FPR
+--------------------------------------------------------------------
+0 (Attack-P)           58.19%         0.01%             0.00%
+1 (RMIA)               68.64%         1.19%             0.51%
+2 (RMIA)               70.13%         1.71%             0.91%
+4 (RMIA)               71.02%         2.91%             2.13%
+127 (RMIA, offline)    71.71%         4.18%             3.14%
+
+KEY OBSERVATIONS FROM PAPER:
+- Going from 1→2 models: +1.49% AUC improvement
+- Going from 2→4 models: +0.89% AUC improvement  
+- Going from 4→127 models: +0.69% AUC improvement (diminishing returns!)
+
+CONCLUSION: 4 models is the "sweet spot" - 99% of the benefit for 1/30th the cost
+
+
+================================================================================
+ANSWERING THE QUESTION
+================================================================================
+
+After running experiments with different numbers of reference models, you can
+answer the question:
+
+"How does the number of reference models affect the attack's success?"
+
+ANSWER FORMAT:
+1. Present your table of results (AUC vs number of models)
+2. Plot a graph: X-axis = number of models, Y-axis = AUC
+3. Calculate improvement rates:
+   - 1→2 models: +X% improvement
+   - 2→4 models: +Y% improvement
+   - 4→8 models: +Z% improvement
+   - etc.
+
+4. Observe the pattern:
+   - Initial models provide LARGE improvements
+   - Additional models provide SMALLER improvements (diminishing returns)
+   - Eventually plateaus (little/no benefit from more models)
+
+"Is there an ideal number?"
+
+ANSWER FORMAT:
+Based on your experiments and paper comparison:
+- MINIMUM VIABLE: 1-2 models (acceptable performance, low cost)
+- RECOMMENDED: 4 models (optimal cost-benefit ratio)
+- MAXIMUM PRACTICAL: 8 models (near-optimal, manageable cost)
+- BEYOND 8 models: Diminishing returns, not worth the training time
+
+Justify with:
+- Your experimental data
+- Training time vs performance gain
+- Comparison with paper results
+- Practical considerations for real-world use
+
+
+================================================================================
+QUICK START (Minimal Time Investment)
+================================================================================
+
+If you have limited time, run ONLY these 4 experiments:
+
+1. num_ref_models = 1  (baseline)
+2. num_ref_models = 2  (common case)
+3. num_ref_models = 4  (sweet spot)
+4. num_ref_models = 8  (already done!)
+
+This gives you enough data to show:
+- The improvement trend
+- Diminishing returns pattern
+- Identify the optimal number (likely 4)
+
+Total time needed: ~1.5 hours of training + evaluation
+
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+ISSUE: "IndexError: list index out of range" when evaluating
+SOLUTION: Make sure you trained enough models before testing
+          If testing 16 models, you must have trained 16 models first!
+
+ISSUE: Training takes too long
+SOLUTION: Reduce epochs (line 38: epochs=5 → epochs=3)
+          Or use fewer evaluation samples (line 243: range(100) → range(50))
+
+ISSUE: Out of memory
+SOLUTION: Reduce batch size (lines 124, 166: batch_size=64 → batch_size=32)
+          Or train fewer models at once
+
+ISSUE: Results vary between runs
+SOLUTION: This is normal due to random initialization
+          Run multiple trials and average the results
+          Or set random seed for reproducibility:
+          Add at top of notebook: 
+          torch.manual_seed(42)
+          np.random.seed(42)
+
+
+================================================================================
+FINAL CHECKLIST
+================================================================================
+
+Before claiming you've answered the question, ensure you have:
+
+[ ] Trained models with at least 3-4 different values of num_ref_models
+[ ] Recorded AUROC for each configuration
+[ ] Created a table or graph showing the relationship
+[ ] Identified the point of diminishing returns
+[ ] Compared your results with the paper (Table 2)
+[ ] Provided a recommendation for the "ideal number"
+[ ] Justified your recommendation with data
+[ ] Included training time considerations
+[ ] Saved all ROC curve plots for comparison
+
+Good luck with your experiments!
+
+================================================================================

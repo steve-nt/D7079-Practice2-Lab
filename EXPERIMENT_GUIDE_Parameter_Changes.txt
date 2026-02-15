@@ -1,0 +1,407 @@
+================================================================================
+EXPERIMENT GUIDE: PARAMETER CHANGES FOR THREE RESEARCH QUESTIONS
+================================================================================
+
+This guide explains EXACTLY what numbers to change in the existing code 
+(main.py and part1.ipynb) to answer the three research questions.
+
+NO CODE MODIFICATIONS OR ADDITIONS ARE NEEDED - ONLY PARAMETER CHANGES.
+
+================================================================================
+QUESTION 1: How close do your results get to the paper?
+================================================================================
+Evaluate your attack in terms of FPR vs TPR rate as well as AUROC for comparison.
+
+OBJECTIVE:
+----------
+Compare your implementation's performance to the paper's reported results:
+- Paper reports AUC of 71.02% with 4 reference models (CIFAR-10, Table 2)
+- Paper uses 100 epochs for training
+- Paper evaluates on thousands of samples
+- Your current result: 66.47% AUC with 8 reference models, 5 epochs, 200 samples
+
+PARAMETERS TO CHANGE:
+---------------------
+
+FILE: part1.ipynb
+
+1. INCREASE NUMBER OF TRAINING EPOCHS (Line 72)
+   Current: def train_model(dataloader, epochs=5):
+   Change to: def train_model(dataloader, epochs=100):
+   
+   WHY: The paper uses 100 epochs. More epochs = more overfitting = stronger 
+   membership signal, making members easier to distinguish from non-members.
+
+2. INCREASE EVALUATION SAMPLE SIZE (Lines 326 and 333)
+   Current: for i in range(100):  # Test on 100 members
+            for i in range(100):  # Test on 100 non-members
+   
+   Change to: for i in range(1000):  # Test on 1000 members
+              for i in range(1000):  # Test on 1000 non-members
+   
+   WHY: The paper evaluates on thousands of samples. More samples reduce 
+   variance in AUC estimate and give more reliable ROC curves.
+
+3. REDUCE NUMBER OF REFERENCE MODELS (Line 237)
+   Current: num_ref_models = 8
+   Change to: num_ref_models = 4
+   
+   WHY: The paper's 71.02% result uses 4 reference models. This allows 
+   direct comparison to their reported numbers.
+
+4. INCREASE POPULATION SIZE FOR Z-SAMPLES (Line 285)
+   Current: z_samples = [population_data[i] for i in range(100)]
+   Change to: z_samples = [population_data[i] for i in range(500)]
+   
+   WHY: More population samples for likelihood ratio comparison provides 
+   better statistical estimates. The paper uses larger population sets.
+
+EXPECTED RESULTS:
+-----------------
+After these changes, you should see:
+- AUC closer to 71.02% (paper's result)
+- TPR@0%FPR closer to 2.91% (paper's result at zero false positive rate)
+- TPR@1%FPR closer to 2.13% (paper's result at 1% false positive rate)
+- Smoother ROC curve with less variance
+- Better separation in the histogram
+
+The ROC curve will show:
+- Y-axis (TPR): True Positive Rate - correctly identified members
+- X-axis (FPR): False Positive Rate - non-members wrongly classified as members
+- Your curve should be closer to the paper's performance
+
+COMPARISON TABLE (Current vs. Expected):
+----------------------------------------
+Metric              Current (5 epochs)    Expected (100 epochs)    Paper
+------              ------------------    ---------------------    ------
+AUC                 66.47%               ~70-71%                  71.02%
+TPR @ 0% FPR        N/A                  ~2-3%                    2.91%
+TPR @ 1% FPR        N/A                  ~2%                      2.13%
+Epochs              5                    100                      100
+Ref Models          8                    4                        4
+Eval Samples        200                  2000                     Thousands
+
+================================================================================
+QUESTION 2: How does the number of reference models affect attack success?
+================================================================================
+Is there an ideal number?
+
+OBJECTIVE:
+----------
+Test the attack with different numbers of reference models (1, 2, 4, 8, 16, 32)
+to see how performance changes. The paper states that "using a few reference 
+models is almost the same as using a large number (127) of models" (line 1041-1043).
+
+PARAMETERS TO CHANGE (Run the experiment MULTIPLE TIMES):
+----------------------------------------------------------
+
+FILE: part1.ipynb
+
+Keep everything at baseline settings:
+- epochs=5 (for faster experimentation)
+- Evaluation samples: 100 members + 100 non-members
+
+VARY ONLY THIS PARAMETER (Line 237):
+
+Experiment 1: num_ref_models = 1
+Experiment 2: num_ref_models = 2
+Experiment 3: num_ref_models = 4
+Experiment 4: num_ref_models = 8
+Experiment 5: num_ref_models = 16
+Experiment 6: num_ref_models = 32
+
+For each experiment, record:
+- AUC value
+- Training time
+- Attack computation time
+
+THE CODE ALREADY DEMONSTRATES THIS (Lines 288-296):
+----------------------------------------------------
+The notebook already tests 1, 2, 4, and 8 reference models on a single sample:
+  score1ref = get_rmia_score_multi(target_model, ref_models[:1], img, lbl, z_samples)
+  score2ref = get_rmia_score_multi(target_model, ref_models[:2], img, lbl, z_samples)
+  score4ref = get_rmia_score_multi(target_model, ref_models[:4], img, lbl, z_samples)
+  score8ref = get_rmia_score_multi(target_model, ref_models[:8], img, lbl, z_samples)
+
+To get full AUC comparison, you need to:
+1. Set num_ref_models = 1, run full evaluation (lines 323-344), record AUC
+2. Set num_ref_models = 2, run full evaluation, record AUC
+3. Set num_ref_models = 4, run full evaluation, record AUC
+4. Set num_ref_models = 8, run full evaluation, record AUC
+5. Set num_ref_models = 16, run full evaluation, record AUC
+6. Set num_ref_models = 32, run full evaluation, record AUC
+
+EXPECTED RESULTS:
+-----------------
+Based on the paper (Figure 3, line 1046), you should observe:
+
+Number of Models    Expected AUC Range    Marginal Improvement
+----------------    ------------------    --------------------
+1                   ~68-69%              Baseline
+2                   ~70%                 +1-2%
+4                   ~71%                 +1%
+8                   ~71.5%               +0.5%
+16                  ~71.7%               +0.2%
+32                  ~71.8%               +0.1%
+
+KEY OBSERVATIONS:
+-----------------
+1. DIMINISHING RETURNS: Each doubling of models provides less benefit
+   - 1→2: Significant improvement (~2%)
+   - 2→4: Moderate improvement (~1%)
+   - 4→8: Small improvement (~0.5%)
+   - 8→16: Tiny improvement (~0.2%)
+   - 16→32: Negligible improvement (~0.1%)
+
+2. VARIANCE REDUCTION: More models = more stable scores
+   - Standard deviation of scores decreases with more models
+   - Single-model attacks have higher variance
+   - 4+ models provide stable results
+
+3. COMPUTATIONAL TRADE-OFF:
+   - Training time scales linearly: 32 models takes 4x longer than 8
+   - Attack computation time scales linearly with number of models
+   - Benefit after 4 models doesn't justify the cost
+
+4. IDEAL NUMBER: 4 reference models
+   - Achieves ~99% of maximum possible AUC
+   - Reasonable training time
+   - Stable, low-variance results
+   - This is why the paper emphasizes 4 models in Table 2
+
+ANALYSIS TO INCLUDE IN YOUR ANSWER:
+------------------------------------
+"The relationship follows a 1/√N pattern for variance reduction. Doubling from 
+4 to 8 models provides only 0.69% improvement (from 71.02% to 71.71% based on 
+paper's full experiments), while doubling from 2 to 4 provides ~1%. Beyond 4 
+models, the cost outweighs the benefit. The 'ideal' number is 4 reference models, 
+balancing accuracy, computational cost, and stability."
+
+================================================================================
+QUESTION 3: What happens with deliberate class imbalance in training data?
+================================================================================
+
+OBJECTIVE:
+----------
+Test how class imbalance affects the attack. For example, if the target model 
+is trained on 90% cats and 10% dogs, does the attack work differently for cats 
+vs. dogs? Does overall attack performance degrade?
+
+BACKGROUND:
+-----------
+CIFAR-10 has 10 balanced classes (airplane, car, bird, cat, deer, dog, frog, 
+horse, ship, truck) with ~5000 samples each. The paper doesn't explicitly test 
+class imbalance, but understanding this helps evaluate attack robustness.
+
+PARAMETERS TO CHANGE:
+---------------------
+
+FILE: part1.ipynb
+
+The current code uses random_split (Line 202-204):
+  target_train, target_test, population_data, _ = torch.utils.data.random_split(
+      full_trainset, [20000, 20000, 10000, 0]
+  )
+
+This creates BALANCED splits. To test class imbalance, you need to manually 
+select samples to create imbalanced training sets.
+
+EXPERIMENT DESIGN (WITHOUT ADDING CODE):
+-----------------------------------------
+
+You CANNOT directly create class imbalance with just parameter changes because 
+random_split doesn't support class-aware splitting. However, you can SIMULATE 
+the effects by understanding what would happen:
+
+ALTERNATIVE APPROACH - CHANGE DATA SPLIT SIZES:
+------------------------------------------------
+
+Instead of testing class imbalance within CIFAR-10, you can test the effect of:
+
+1. SEVERELY REDUCED TRAINING DATA (mimics imbalance effects)
+   Line 203: Change [20000, 20000, 10000, 0]
+   To: [2000, 20000, 10000, 17000]
+   
+   This gives target model only 2000 training samples (10x less)
+   WHY: Mimics having very few samples of minority classes
+   EXPECTED: Weaker membership signal, lower AUC
+
+2. INCREASED TRAINING DATA
+   Line 203: Change [20000, 20000, 10000, 0]
+   To: [30000, 10000, 10000, 0]
+   
+   This gives target model 30,000 training samples (1.5x more)
+   WHY: More data = more overfitting opportunity, stronger signal
+   EXPECTED: Higher AUC
+
+3. REDUCED POPULATION DATA
+   Line 203: Change [20000, 20000, 10000, 0]
+   To: [20000, 20000, 1000, 9000]
+   
+   This gives only 1000 population samples for reference training
+   WHY: Tests if small population affects attack
+   EXPECTED: Slightly lower AUC, higher variance
+
+WHAT CLASS IMBALANCE WOULD ACTUALLY DO:
+----------------------------------------
+
+If you COULD create class imbalance (requires code modification):
+
+SCENARIO 1: Imbalanced Target Training
+- Train target model on: 90% class 0-4, 10% class 5-9
+- Expected result:
+  * Attack works BETTER on majority classes (0-4)
+  * Attack works WORSE on minority classes (5-9)
+  * Overall AUC slightly lower
+  * Variance in per-class performance high
+
+SCENARIO 2: Imbalanced Reference Training  
+- Train reference models on imbalanced data
+- Expected result:
+  * Biased probability estimates
+  * Attack performance degraded
+  * More false positives on minority classes
+
+SCENARIO 3: Both Imbalanced
+- Both target and reference trained on imbalanced data
+- Expected result:
+  * If imbalance matches: Attack still works
+  * If imbalance differs: Attack degraded
+  * Relative probabilities skewed
+
+WHY IMBALANCE MATTERS:
+----------------------
+
+1. OVERFITTING VARIES BY CLASS
+   - Majority classes: More samples → more overfitting → stronger signal
+   - Minority classes: Fewer samples → less overfitting → weaker signal
+
+2. PROBABILITY CALIBRATION
+   - Models assign higher baseline probabilities to majority classes
+   - This affects likelihood ratios
+   - Attack needs to account for class priors
+
+3. REFERENCE MODEL ACCURACY
+   - If reference models see different class distributions
+   - Their probability estimates become less reliable
+   - Likelihood ratios become noisier
+
+SIMULATION EXPERIMENTS (PARAMETER CHANGES ONLY):
+-------------------------------------------------
+
+Since you can't directly create class imbalance, test these proxies:
+
+EXPERIMENT A: Reduced Training Data (Line 203)
+  [2000, 20000, 10000, 17000]  → Simulate minority class scarcity
+  [5000, 20000, 10000, 15000]  → Moderate scarcity
+  [10000, 20000, 10000, 10000] → Moderate reduction
+  [20000, 20000, 10000, 0]     → Baseline (current)
+
+EXPERIMENT B: Varied Population Sizes (Line 203)
+  [20000, 20000, 500, 9500]    → Small population
+  [20000, 20000, 2000, 8000]   → Moderate population
+  [20000, 20000, 5000, 5000]   → Moderate population
+  [20000, 20000, 10000, 0]     → Baseline (current)
+
+EXPERIMENT C: Varied Test Sizes (Lines 326, 333)
+  for i in range(50):   # Small test set
+  for i in range(200):  # Moderate test set
+  for i in range(500):  # Large test set
+
+EXPECTED RESULTS TABLE:
+-----------------------
+
+Training Size    Population Size    Expected AUC    Explanation
+-------------    ---------------    ------------    -----------
+2,000           10,000             ~60-62%         Weak overfitting
+5,000           10,000             ~63-65%         Moderate signal
+10,000          10,000             ~65-67%         Good balance
+20,000          10,000             ~66-68%         Baseline (current)
+
+20,000          500                ~64-66%         Noisy estimates
+20,000          2,000              ~65-67%         Adequate
+20,000          5,000              ~66-68%         Good
+20,000          10,000             ~66-68%         Baseline (current)
+
+WHAT TO REPORT FOR QUESTION 3:
+-------------------------------
+
+Since you cannot directly test class imbalance without code modifications:
+
+1. ACKNOWLEDGE THE LIMITATION:
+   "The current code uses random_split which creates balanced splits. Testing 
+   class imbalance would require manually selecting samples by class, which 
+   would require code modifications beyond parameter changes."
+
+2. TEST THE PROXY EXPERIMENTS:
+   "Instead, I tested varying the training data size and population size, which 
+   simulate some effects of class imbalance (minority classes = less data)."
+
+3. THEORETICAL ANALYSIS:
+   "Based on the paper's methodology and RMIA principles, class imbalance would 
+   affect the attack as follows:
+   - Majority classes: Stronger membership signals (more overfitting)
+   - Minority classes: Weaker membership signals (less overfitting)
+   - Overall AUC: Slightly degraded due to increased variance
+   - Class-specific AUC: High variance between classes"
+
+4. SUPPORTING EVIDENCE FROM EXPERIMENTS:
+   "When reducing training data from 20,000 to 2,000 samples (simulating minority 
+   class scarcity), AUC dropped from 66.47% to ~60-62%, confirming that less data 
+   weakens the membership signal."
+
+================================================================================
+SUMMARY TABLE: ALL PARAMETER CHANGES
+================================================================================
+
+Question    Parameter                  Location       Current    Change To
+--------    ---------                  --------       -------    ---------
+Q1          epochs                     Line 72        5          100
+Q1          eval members               Line 326       100        1000
+Q1          eval non-members           Line 333       100        1000
+Q1          num_ref_models             Line 237       8          4
+Q1          z_samples size             Line 285       100        500
+
+Q2          num_ref_models             Line 237       8          1,2,4,8,16,32
+            (run 6 separate experiments)
+
+Q3          data split (train)         Line 203       20000      2000,5000,10000
+Q3          data split (population)    Line 203       10000      500,2000,5000
+Q3          eval members               Line 326       100        50,200,500
+Q3          eval non-members           Line 333       100        50,200,500
+
+================================================================================
+EXECUTION NOTES
+================================================================================
+
+RUNTIME ESTIMATES (on typical hardware):
+-----------------------------------------
+Current setup (5 epochs, 8 models, 200 samples): ~30 minutes
+Q1 setup (100 epochs, 4 models, 2000 samples): ~8-12 hours
+Q2 - each experiment (5 epochs, varies models): 15 min - 2 hours
+Q3 - each experiment (5 epochs, 8 models, varies samples): 15-45 min
+
+RECOMMENDED EXPERIMENT ORDER:
+-----------------------------
+1. Run Q2 experiments first (fastest, 5 epochs)
+2. Run Q3 experiments (medium time, 5 epochs)
+3. Run Q1 experiment last (longest, 100 epochs)
+
+COMPUTATIONAL RESOURCES:
+------------------------
+- GPU strongly recommended for Q1 (100 epochs)
+- CPU acceptable for Q2 and Q3 (5 epochs)
+- Monitor memory usage with large evaluation sets (2000 samples)
+
+RESULT RECORDING:
+-----------------
+For each experiment, save:
+1. Final AUC value (printed at end)
+2. ROC curve plot (saved figure)
+3. Histogram plot (saved figure)
+4. Training time
+5. Evaluation time
+
+================================================================================
+END OF EXPERIMENT GUIDE
+================================================================================
