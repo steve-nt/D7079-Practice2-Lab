@@ -1,0 +1,311 @@
+==============================================================================
+PART 2 EXPLANATION: HRR Defense Against RMIA
+Implementation of Holographic Reduced Representations (HRR) Defense
+==============================================================================
+
+OVERVIEW:
+---------
+Part 2 implements the Holographic Reduced Representations (HRR) defense 
+mechanism to protect against the RMIA (Robust Membership Inference Attack) 
+implemented in Part 1. This follows the requirements from practice2.pdf 
+(Task 2.1 and 2.2).
+
+
+WHAT IS HRR?
+------------
+HRR (Holographic Reduced Representations) is a privacy-preserving technique 
+that obfuscates training data using circular convolution in the frequency domain. 
+The key idea is to "bind" each input image with a random secret vector before 
+feeding it to the neural network, making it difficult for attackers to 
+perform membership inference.
+
+
+==============================================================================
+FILE 1: part2.ipynb - HRR IMPLEMENTATION AND EVALUATION
+==============================================================================
+
+PURPOSE:
+--------
+This notebook implements the complete HRR defense system and evaluates its 
+effectiveness against the RMIA attack.
+
+
+IMPLEMENTATION DETAILS:
+-----------------------
+
+1. HRR CORE FUNCTIONS (Cells 2):
+   
+   a) fft2(x) and ifft2(x):
+      - Perform 2D Fast Fourier Transform and its inverse
+      - Convert images between spatial and frequency domains
+      
+   b) project_unit_magnitude(s):
+      - Normalizes the frequency spectrum to unit magnitude
+      - Ensures the secret vector maintains specific properties
+      - Formula: S / |S| in frequency domain
+      
+   c) sample_secret_like(x):
+      - Generates a random secret vector matching the input shape
+      - Samples from Gaussian distribution
+      - Projects to unit magnitude in frequency domain
+      
+   d) hrr_bind(x, s):
+      - Performs the circular convolution binding operation
+      - Formula: x ⊛ s = F^(-1)[F(x) * F(s)]
+      - F is Fourier transform, * is element-wise multiplication
+      - This is the core HRR operation that obfuscates the input
+
+
+2. DATA PREPARATION (Cell 3):
+   - CIFAR-10 dataset with standard normalization
+   - Split: 20,000 training, 20,000 test, 10,000 population
+   - Same split strategy as Part 1 for fair comparison
+
+
+3. MODEL ARCHITECTURE (Cell 4):
+   - ResNet-18 adapted for CIFAR-10 (as required by the paper)
+   - Modified first conv layer: kernel_size=3, stride=1 (vs. kernel_size=7, stride=2)
+   - Removed max pooling layer (replaced with Identity)
+   - These changes accommodate the smaller 32x32 CIFAR-10 images
+   - Simplification from paper: No U-Net, no adversarial network
+
+
+4. HRR-PROTECTED MODEL TRAINING (Cell 5):
+   - train_hrr_model() function
+   - Key difference: Each batch is bound with random secret before forward pass
+   - Process:
+     1. Generate random secret s for each batch
+     2. Compute x_enc = hrr_bind(x, s)
+     3. Train model on x_enc instead of x
+   - Model learns to classify obfuscated images
+   - 5 epochs with Adam optimizer (lr=1e-3)
+
+
+5. ATTACK INFRASTRUCTURE (Cell 6-7):
+   
+   a) HRRWrapper class:
+      - Wraps the trained model to apply HRR at inference time
+      - Automatically generates new random secret for each query
+      - This ensures attacker never sees clean predictions
+      
+   b) get_rmia_score_multi():
+      - Same RMIA attack implementation from Part 1
+      - Tests if the attack can still distinguish members/non-members
+      - Computes likelihood ratio scores using target and reference models
+      
+   c) Reference Model Training:
+      - 2 reference models trained on population data
+      - Each trained with HRR protection
+      - Each sees different random subset of population
+      - Wrapped with HRRWrapper for consistency
+
+
+6. EVALUATION (Cell 8):
+   - Tests 100 member samples (from training set)
+   - Tests 100 non-member samples (from test set)
+   - Computes AUROC to measure attack success
+   - AUROC ≈ 0.5 means attack is no better than random guessing
+
+
+RESULTS:
+--------
+HRR + RMIA AUROC: 0.5021
+
+This is nearly identical to random guessing (0.5), indicating the HRR defense
+is highly effective. The attack cannot distinguish between training members
+and non-members.
+
+
+WHY IT WORKS:
+-------------
+1. Random Secret per Query:
+   - Each inference uses a different random secret
+   - Attacker cannot build consistent statistical profile
+   
+2. Obfuscation in Frequency Domain:
+   - Circular convolution mixes all spatial positions
+   - Cannot be easily reversed without the secret
+   
+3. Model Trained on Obfuscated Data:
+   - Model never sees clean images during training
+   - Clean images would produce meaningless predictions
+
+
+COMPARISON TO PAPER:
+--------------------
+From practice2.pdf requirements:
+- ✓ Implemented HRR defense mechanism
+- ✓ Tested against RMIA from Part 1
+- ✓ Replaced U-Net with ResNet-18
+- ✓ Omitted adversarial network (as allowed)
+- ✓ Simplified pipeline (no accuracy optimization measures)
+
+
+==============================================================================
+FILE 2: part2.2.ipynb - ANALYSIS AND EVALUATION
+==============================================================================
+
+PURPOSE:
+--------
+This file contains written answers to the three analysis questions posed in
+Task 2.2 of the assignment (practice2.pdf).
+
+
+QUESTION 1: How effective is HRR?
+----------------------------------
+
+Answer Summary:
+"The HRR defense worked very well. AUROC was 0.5021, which is almost the same 
+as random guessing (0.5). This means the attacker could not tell if a sample 
+was in the training data or not."
+
+Explanation:
+- HRR changes every image before the model sees it with random secrets
+- Attacker can no longer use model confidence to detect membership
+- The randomness per query destroys the statistical patterns RMIA relies on
+- Attack effectiveness drops to baseline (random chance)
+
+
+QUESTION 2: Is HRR encryption?
+-------------------------------
+
+Answer Summary:
+"HRR is not real encryption. It does not fully protect the data like 
+encryption does. Instead, it just changes the image using a secret so it 
+becomes hard to understand."
+
+Key Points:
+- HRR is obfuscation, not encryption
+- It hides/scrambles data but doesn't provide cryptographic guarantees
+- The model can still use the image because it was trained on obfuscated data
+- Different from encryption: no formal security proofs, reversible with secret
+- More accurately described as a "privacy-preserving transformation"
+
+
+QUESTION 3: Can an attacker still break it?
+--------------------------------------------
+
+Answer Summary:
+"Yes, a strong attacker could still try to break this defense."
+
+Potential Attack Vectors:
+
+1. Secret Recovery:
+   - If attacker somehow obtains the secret, they can apply same transformation
+   - Could then run RMIA on consistently transformed data
+   
+2. Query Averaging:
+   - Send same input many times
+   - Average outputs to reduce randomness effect
+   - Might recover some signal about membership
+   
+3. Adaptive Attacks:
+   - Model inversion in frequency domain
+   - Exploit patterns in how HRR transforms different image types
+   
+4. Side-Channel Attacks:
+   - Timing differences
+   - Memory access patterns
+   - Could reveal information about training data
+
+Conclusion:
+"HRR makes the attack much harder, but it is not a perfect defense."
+
+
+==============================================================================
+RELATIONSHIP TO PRACTICE2.PDF
+==============================================================================
+
+The implementation addresses all requirements from the assignment:
+
+PART II: Obfuscation with HRR (from practice2.txt/pdf)
+
+Task 2.1: Defending against the attack ✓
+- Implemented HRR defense from arxiv.org/abs/2206.05893
+- Simplified pipeline as allowed:
+  1. ✓ Replaced U-Net with ResNet-18
+  2. ✓ Left out adversarial network
+  3. ✓ Ignored accuracy loss mitigation measures
+
+Task 2.2: Analysis and Evaluation ✓
+- Question 1: Effectiveness of HRR ✓
+- Question 2: Is HRR encryption? ✓
+- Question 3: Adaptive attack strategies ✓
+
+
+==============================================================================
+KEY TECHNICAL CONCEPTS
+==============================================================================
+
+1. CIRCULAR CONVOLUTION:
+   - In spatial domain: x ⊛ s involves shifting and wrapping
+   - In frequency domain: F(x ⊛ s) = F(x) * F(s) (element-wise product)
+   - More efficient to compute in frequency domain via FFT
+
+2. FREQUENCY DOMAIN OBFUSCATION:
+   - FFT converts image to frequency components
+   - Multiplication with secret mixes all frequency components
+   - IFFT converts back to spatial domain
+   - Result: spatially scrambled image that preserves some structure
+
+3. UNIT MAGNITUDE PROJECTION:
+   - Ensures secret has magnitude 1 in frequency domain
+   - Makes binding operation more stable
+   - Prevents numerical issues during training
+
+4. RANDOM SECRET PER QUERY:
+   - Critical for defense effectiveness
+   - Without it, attacker could observe consistent pattern
+   - With it, each query looks different even for same input
+
+
+==============================================================================
+EXPERIMENTAL DESIGN
+==============================================================================
+
+Control Setup:
+- Same dataset splits as Part 1 (without HRR)
+- Same model architecture (ResNet-18 for CIFAR-10)
+- Same attack methodology (RMIA)
+- Same evaluation metric (AUROC)
+
+Variable:
+- HRR protection enabled vs. disabled
+
+Fair Comparison:
+- Part 1: RMIA on unprotected model → High AUROC (attack succeeds)
+- Part 2: RMIA on HRR-protected model → AUROC ≈ 0.5 (attack fails)
+
+
+==============================================================================
+LIMITATIONS AND FUTURE WORK
+==============================================================================
+
+Current Limitations:
+1. Computational overhead (FFT operations add latency)
+2. No formal security guarantees
+3. Accuracy may be lower than unprotected model (not measured here)
+4. Vulnerable to adaptive attacks if attacker knows HRR is used
+
+Potential Improvements:
+1. Combine with differential privacy
+2. Use cryptographic commitment schemes for secrets
+3. Implement secure multi-party computation for secret generation
+4. Add noise to outputs to further obscure membership signals
+
+
+==============================================================================
+CONCLUSION
+==============================================================================
+
+The HRR defense successfully prevents the RMIA attack from distinguishing
+between training members and non-members (AUROC = 0.5021 ≈ random guessing).
+
+However, HRR is not encryption and could potentially be defeated by adaptive
+adversaries with sufficient resources and knowledge of the defense mechanism.
+
+It represents a practical privacy-preserving technique with acceptable
+overhead and strong empirical effectiveness, but should be combined with
+other defenses for comprehensive protection.
+
+==============================================================================
